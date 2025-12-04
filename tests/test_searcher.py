@@ -13,13 +13,39 @@ class TestUtilities(unittest.TestCase):
             '麻黃湯': {'麻黃': 0.9, '桂枝': 0.6, '炙甘草': 0.3, '杏仁': 0.5},
         }
 
-        self.assertEqual(list(searcher.all_combinations(database, None)), [
+        # basic
+        self.assertEqual(list(searcher.all_combinations(database)), [
             ('桂枝湯',), ('桂枝去芍藥湯',), ('麻黃湯',),
             ('桂枝湯', '桂枝去芍藥湯'), ('桂枝湯', '麻黃湯'), ('桂枝去芍藥湯', '麻黃湯'),
         ])
 
-        self.assertEqual(list(searcher.all_combinations(database, {'桂枝湯'})), [
+        # filter by target_composition
+        target_composition = {
+            '白芍': 1.0, '杏仁': 1.0,
+        }
+        self.assertEqual(list(searcher.all_combinations(database, target_composition)), [
+            ('桂枝湯',), ('麻黃湯',), ('桂枝湯', '麻黃湯'),
+        ])
+
+        target_composition = {
+            '紫蘇': 1.0,
+        }
+        self.assertEqual(list(searcher.all_combinations(database, target_composition)), [])
+
+        # filter by excludes
+        excludes = {'桂枝湯'}
+        self.assertEqual(list(searcher.all_combinations(database, excludes=excludes)), [
             ('桂枝去芍藥湯',), ('麻黃湯',), ('桂枝去芍藥湯', '麻黃湯'),
+        ])
+
+        excludes = {'桂枝去芍藥湯'}
+        self.assertEqual(list(searcher.all_combinations(database, excludes=excludes)), [
+            ('桂枝湯',), ('麻黃湯',), ('桂枝湯', '麻黃湯'),
+        ])
+
+        excludes = {'桂枝湯', '桂枝去芍藥湯'}
+        self.assertEqual(list(searcher.all_combinations(database, excludes=excludes)), [
+            ('麻黃湯',),
         ])
 
     def test_calculate_delta(self):
