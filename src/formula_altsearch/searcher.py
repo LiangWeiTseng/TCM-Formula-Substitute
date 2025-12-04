@@ -1,16 +1,16 @@
-import json
 import os
 import time
 from itertools import combinations
 
+import yaml
 from scipy.optimize import minimize
 
-DEFAULT_DATAFILE = os.path.normpath(os.path.join(__file__, '..', 'database.json'))
+DEFAULT_DATAFILE = os.path.normpath(os.path.join(__file__, '..', 'database.yaml'))
 
 
 def load_formula_database(filepath):
     with open(filepath, 'r', encoding='utf-8') as file:
-        database = json.load(file)
+        database = yaml.safe_load(file)
     return database
 
 
