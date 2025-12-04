@@ -31,10 +31,6 @@ def _load_formula_database(data):
     rv = {}
 
     for _item in data:
-        # skip herbs
-        if len(_item['composition']) <= 1:
-            continue
-
         name = _item['name']
         key = _item['key']
         if key in rv:

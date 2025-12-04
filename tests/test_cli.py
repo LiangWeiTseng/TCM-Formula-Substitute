@@ -5,7 +5,7 @@ from unittest import mock
 
 from formula_altsearch import cli
 
-DATABASE_SAMPLE = {'桂枝湯': {'桂枝': 3, '白芍': 2}}
+DATABASE_SAMPLE = {'桂枝湯': {'桂枝': 3, '白芍': 2}, '桂枝': {'桂枝': 4}}
 DATABASE_SAMPLE2 = {'桂枝湯': {'桂枝': 3, '白芍': 2}, '芍藥甘草湯': {'白芍': 2, '炙甘草': 2}}
 
 
@@ -18,6 +18,7 @@ class TestCmdSearch(unittest.TestCase):
             verbosity=50,
             database='custom_db.yaml',
             items=[('桂枝湯', 3)],
+            raw=False,
             penalty=3,
             num=6,
         ))
@@ -35,12 +36,47 @@ class TestCmdSearch(unittest.TestCase):
             verbosity=50,
             database='custom_db.yaml',
             items=[('麻黃湯', 3)],
+            raw=False,
             penalty=3,
             num=6,
         ))
         m_load.assert_called_once_with('custom_db.yaml')
         m_search.assert_not_called()
-        self.assertRegex(m_stdout.getvalue(), r'資料庫尚未收錄此方劑。')
+        self.assertRegex(m_stdout.getvalue(), r'資料庫尚未收錄以下品項: 麻黃湯')
+
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    @mock.patch.object(cli, 'search')
+    @mock.patch.object(cli.searcher, 'load_formula_database', return_value=DATABASE_SAMPLE)
+    def test_cmd_search_formulas(self, m_load, m_search, m_stdout):
+        cli.cmd_search(SimpleNamespace(
+            verbosity=50,
+            database='custom_db.yaml',
+            items=[('桂枝湯', 3), ('桂枝', 1)],
+            raw=False,
+            penalty=3,
+            num=6,
+        ))
+        m_load.assert_called_once_with('custom_db.yaml')
+        m_search.assert_called_once_with(
+            m_load.return_value, {'桂枝': 13, '白芍': 6},
+            excludes={'桂枝湯'}, penalty_factor=3, top_n=6,
+        )
+
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    @mock.patch.object(cli, 'search')
+    @mock.patch.object(cli.searcher, 'load_formula_database', return_value=DATABASE_SAMPLE)
+    def test_cmd_search_formulas_nonexist(self, m_load, m_search, m_stdout):
+        cli.cmd_search(SimpleNamespace(
+            verbosity=50,
+            database='custom_db.yaml',
+            items=[('桂枝湯', 3), ('白芍', 1), ('生薑', 1)],
+            raw=False,
+            penalty=3,
+            num=6,
+        ))
+        m_load.assert_called_once_with('custom_db.yaml')
+        m_search.assert_not_called()
+        self.assertRegex(m_stdout.getvalue(), r'資料庫尚未收錄以下品項: 白芍, 生薑')
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     @mock.patch.object(cli, 'search')
@@ -50,13 +86,14 @@ class TestCmdSearch(unittest.TestCase):
             verbosity=50,
             database='custom_db.yaml',
             items=[('桂枝', 4), ('白芍', 2)],
+            raw=True,
             penalty=5,
             num=10,
         ))
         m_load.assert_called_once_with('custom_db.yaml')
         m_search.assert_called_once_with(
             m_load.return_value, {'桂枝': 4, '白芍': 2},
-            excludes=None, penalty_factor=5, top_n=10,
+            excludes=set(), penalty_factor=5, top_n=10,
         )
 
     @mock.patch('sys.stdout', new_callable=StringIO)
@@ -67,12 +104,13 @@ class TestCmdSearch(unittest.TestCase):
             verbosity=50,
             database='custom_db.yaml',
             items=[('桂枝', 4), ('生薑', 3), ('炙甘草', 2)],
+            raw=True,
             penalty=5,
             num=10,
         ))
         m_load.assert_called_once_with('custom_db.yaml')
         m_search.assert_not_called()
-        self.assertRegex(m_stdout.getvalue(), r'資料庫尚未收錄以下藥物：生薑, 炙甘草')
+        self.assertRegex(m_stdout.getvalue(), r'資料庫尚未收錄與以下中藥相關的科學中藥: 生薑, 炙甘草')
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     @mock.patch.object(cli.searcher, 'find_best_matches', wraps=cli.searcher.find_best_matches)

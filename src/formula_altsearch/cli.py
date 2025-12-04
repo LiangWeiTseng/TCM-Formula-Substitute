@@ -10,7 +10,7 @@ def search(database, target_composition, **options):
         print(f'    {herb}: {amount:.2f}')
     print('')
 
-    print(f'方劑總數: {len(database.keys())}')
+    print(f'品項總數: {len(database.keys())}')
     print('')
 
     best_matches, elapsed = searcher.find_best_matches(database, target_composition, **options)
@@ -57,31 +57,43 @@ def cmd_search(args):
         print(f'無法載入資料庫檔案: {args.database}')
         return
 
-    target_composition = {}
-    excludes = None
-    if len(args.items) > 1:
-        all_herbs = set()
-        for formula in database.values():
-            if len(formula) > 1:
-                all_herbs |= formula.keys()
+    all_herbs = set()
+    all_sformulas = set()
+    all_cformulas = set()
+    for name, data in database.items():
+        if len(data) > 1:
+            all_cformulas.add(name)
+        else:
+            all_sformulas.add(name)
+        all_herbs |= data.keys()
 
-        unknown_herbs = []
+    target_composition = {}
+    excludes = set()
+
+    if args.raw:
+        unknowns = {}
         for herb, amount in args.items:
-            if herb not in all_herbs:
-                unknown_herbs.append(herb)
-                continue
-            target_composition[herb] = target_composition.get(herb, 0) + amount
-        if unknown_herbs:
-            print(f'資料庫尚未收錄以下藥物：{", ".join(unknown_herbs)}')
+            if herb in all_herbs:
+                target_composition[herb] = target_composition.get(herb, 0) + amount
+            else:
+                unknowns[herb] = None
+        if unknowns:
+            print(f'資料庫尚未收錄與以下中藥相關的科學中藥: {", ".join(unknowns)}')
             return
     else:
-        formula_name, input_dosage = args.items[0]
-        if formula_name not in database:
-            print('資料庫尚未收錄此方劑。')
+        unknowns = {}
+        for item, dosage in args.items:
+            if item in all_cformulas or item in all_sformulas:
+                if item in all_cformulas:
+                    excludes.add(item)
+                adjusted = {herb: dosage * amount for herb, amount in database[item].items()}
+                for herb, amount in adjusted.items():
+                    target_composition[herb] = target_composition.get(herb, 0) + amount
+            else:
+                unknowns[item] = None
+        if unknowns:
+            print(f'資料庫尚未收錄以下品項: {", ".join(unknowns)}')
             return
-        for herb, amount in database[formula_name].items():
-            target_composition[herb] = input_dosage * amount
-        excludes = {formula_name}
 
     search(database, target_composition,
            excludes=excludes, penalty_factor=args.penalty, top_n=args.num)
@@ -125,7 +137,11 @@ def parse_args(argv=None):
     parser_search.set_defaults(func=cmd_search)
     parser_search.add_argument(
         'items', metavar='NAME:DOSE', nargs='+', type=parse_item, action='store',
-        help="""要搜尋的品項及劑量。可輸入一個複方或多個中藥，例如 '補中益氣湯:3.0' 或 '人參:3.0 茯苓:2.5'""",
+        help="""要搜尋的科學中藥品項及劑量。例如 '補中益氣湯:6.0 桂枝:1.0'""",
+    )
+    parser_search.add_argument(
+        '-r', '--raw', default=False, action='store_true',
+        help="""搜尋生藥劑量，加入此參數時每個 NAME:DOSE 代表配方中的生藥及劑量""",
     )
     parser_search.add_argument(
         '-p', '--penalty', metavar='FACTOR', default=2.0, type=float, action='store',
