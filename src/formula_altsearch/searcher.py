@@ -8,7 +8,7 @@ from scipy.optimize import minimize
 DEFAULT_DATAFILE = os.path.normpath(os.path.join(__file__, '..', 'database.json'))
 
 
-def load_prescription_database(filepath):
+def load_formula_database(filepath):
     with open(filepath, 'r', encoding='utf-8') as file:
         database = json.load(file)
     return database
@@ -19,30 +19,30 @@ def all_combinations(database, exclude):
     return chain(*[combinations(keys, i) for i in range(1, min(len(keys), 2) + 1)])
 
 
-def objective_func(x, target_composition, combination, database, penalty_factor):
+def calculate_delta(x, target_composition, combination, database, penalty_factor):
     combined_composition = {}
-    for i, prescription in enumerate(combination):
-        for herb, amount in database[prescription].items():
+    for i, formula in enumerate(combination):
+        for herb, amount in database[formula].items():
             if herb in combined_composition:
                 combined_composition[herb] += amount * x[i]
             else:
                 combined_composition[herb] = amount * x[i]
 
-    difference = 0
+    delta = 0
     for herb, target_amount in target_composition.items():
         combined_amount = combined_composition.get(herb, 0)
-        difference += (target_amount - combined_amount) ** 2
+        delta += (target_amount - combined_amount) ** 2
 
     non_target_herbs_count = len(set(combined_composition.keys()) - set(target_composition.keys()))
-    difference += penalty_factor * non_target_herbs_count
+    delta += penalty_factor * non_target_herbs_count
 
-    return difference
+    return delta
 
 
 def calculate_match(target_composition, combination, database, penalty_factor):
     initial_guess = [1 for _ in combination]
     bounds = [(0, 200) for _ in combination]
-    result = minimize(objective_func, initial_guess, args=(target_composition, combination, database, penalty_factor), method='SLSQP', bounds=bounds)
+    result = minimize(calculate_delta, initial_guess, args=(target_composition, combination, database, penalty_factor), method='SLSQP', bounds=bounds)
 
     if result.success:
         dosages = result.x
@@ -52,11 +52,11 @@ def calculate_match(target_composition, combination, database, penalty_factor):
         return 0, combination, []
 
 
-def find_best_matches(name, database, adjusted_target_composition, penalty_factor, top_n=5):
+def find_best_matches(name, database, target_composition, penalty_factor, top_n=5):
     all_possible_combinations = all_combinations(database, name if name else '')
 
     start = time.time()
-    matches = [calculate_match(adjusted_target_composition, combo, database, penalty_factor) for combo in all_possible_combinations]
+    matches = [calculate_match(target_composition, combo, database, penalty_factor) for combo in all_possible_combinations]
     elapsed = time.time() - start
 
     best_matches = sorted(matches, key=lambda x: -x[0])[:top_n]

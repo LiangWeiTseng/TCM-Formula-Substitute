@@ -1,7 +1,7 @@
 from . import searcher
 
 
-def parse_prescription_and_dosage(input_str):
+def parse_input_item(input_str):
     for i in range(len(input_str) - 1, -1, -1):
         if not input_str[i].isdigit() and input_str[i] != '.':
             return input_str[:i + 1].strip(), float(input_str[i + 1:])
@@ -10,8 +10,8 @@ def parse_prescription_and_dosage(input_str):
 
 def adjust_target_composition_for_dosage(target_composition, input_dosage):
     adjusted_target_composition = {}
-    for herb, proportion in target_composition.items():
-        adjusted_target_composition[herb] = proportion * input_dosage
+    for herb, amount in target_composition.items():
+        adjusted_target_composition[herb] = amount * input_dosage
     return adjusted_target_composition
 
 
@@ -23,34 +23,34 @@ def search(name, database, target_composition, penalty_factor):
     for match in best_matches:
         match_percentage, combination, dosages = match
 
-        combined_composition = herbs_dosage = {}
-        for dosage, prescription in zip(dosages, combination):
-            for herb, amount in database[prescription].items():
-                if herb in herbs_dosage:
-                    herbs_dosage[herb] += amount * dosage
+        combined_composition = herbs_amount = {}
+        for dosage, formula in zip(dosages, combination):
+            for herb, amount in database[formula].items():
+                if herb in herbs_amount:
+                    herbs_amount[herb] += amount * dosage
                 else:
-                    herbs_dosage[herb] = amount * dosage
+                    herbs_amount[herb] = amount * dosage
 
-        herbs_dosage = dict(sorted(herbs_dosage.items(), key=lambda item: (item[0] not in target_composition, item[0])))
-        herbs_dosage = {f'**{herb}**' if herb in target_composition else herb: dosage for herb, dosage in herbs_dosage.items()}
+        herbs_amount = dict(sorted(herbs_amount.items(), key=lambda item: (item[0] not in target_composition, item[0])))
+        herbs_amount = {f'**{herb}**' if herb in target_composition else herb: amount for herb, amount in herbs_amount.items()}
 
-        remaining_herbs = {herb: target_composition.get(herb, 0) - combined_composition.get(herb, 0) for herb in target_composition}
-        remaining_herbs = {herb: amount for herb, amount in remaining_herbs.items() if amount > 0}
+        missing_herbs = {herb: target_composition.get(herb, 0) - combined_composition.get(herb, 0) for herb in target_composition}
+        missing_herbs = {herb: amount for herb, amount in missing_herbs.items() if amount > 0}
 
-        combination_str = ', '.join([f'{prescription}{dosage:.1f}' for prescription, dosage in zip(combination, dosages)])
+        combination_str = ', '.join([f'{formula}{dosage:.1f}' for formula, dosage in zip(combination, dosages)])
         print(f'匹配度: {match_percentage:.2f}%，組合: {combination_str}')
-        for herb, dosage in herbs_dosage.items():
-            print(f'    {herb}: {dosage:.2f}')
+        for herb, amount in herbs_amount.items():
+            print(f'    {herb}: {amount:.2f}')
 
         # 收集組合中已出現的藥材
         combined_herbs = set()
-        for prescription in combination:
-            combined_herbs.update(database[prescription].keys())
+        for formula in combination:
+            combined_herbs.update(database[formula].keys())
 
-        if remaining_herbs:
+        if missing_herbs:
             print('尚缺藥物：')
-            for herb in remaining_herbs.keys():
-                if remaining_herbs[herb] > 0 and herb not in combined_herbs:
+            for herb in missing_herbs.keys():
+                if missing_herbs[herb] > 0 and herb not in combined_herbs:
                     print(f'    {herb}')
         else:
             print('所有目標藥材已被完全匹配。')
@@ -58,8 +58,8 @@ def search(name, database, target_composition, penalty_factor):
 
 
 def main():
-    prescription_database = searcher.load_prescription_database(searcher.DEFAULT_DATAFILE)
-    print(f'方劑數量:{len(prescription_database.keys())}')
+    database = searcher.load_formula_database(searcher.DEFAULT_DATAFILE)
+    print(f'方劑數量:{len(database.keys())}')
 
     penalty_factor_input = input('請輸入懲罰因子（預設為2）：')
     try:
@@ -75,23 +75,23 @@ def main():
         adjusted_target_composition = {}
         unknown_herbs = []
         for herb_input in herbs_input:
-            herb, dosage = parse_prescription_and_dosage(herb_input)
-            if not any(herb in herbs for prescription in prescription_database.values() for herbs in prescription):
+            herb, amount = parse_input_item(herb_input)
+            if not any(herb in herbs for formula in database.values() for herbs in formula):
                 unknown_herbs.append(herb)
             else:
                 if herb in adjusted_target_composition:
-                    adjusted_target_composition[herb] += dosage
+                    adjusted_target_composition[herb] += amount
                 else:
-                    adjusted_target_composition[herb] = dosage
+                    adjusted_target_composition[herb] = amount
         if unknown_herbs:
             print(f'資料庫尚未收錄以下藥物：{", ".join(unknown_herbs)}')
         else:
-            search(None, prescription_database, adjusted_target_composition, penalty_factor)
+            search(None, database, adjusted_target_composition, penalty_factor)
     else:
-        prescription_name, input_dosage = parse_prescription_and_dosage(user_input)
-        if prescription_name in prescription_database:
-            target_composition = prescription_database[prescription_name]
+        formula_name, input_dosage = parse_input_item(user_input)
+        if formula_name in database:
+            target_composition = database[formula_name]
             adjusted_target_composition = adjust_target_composition_for_dosage(target_composition, input_dosage)
-            search(prescription_name, prescription_database, adjusted_target_composition, penalty_factor)
+            search(formula_name, database, adjusted_target_composition, penalty_factor)
         else:
             print('資料庫尚未收錄此方劑。')

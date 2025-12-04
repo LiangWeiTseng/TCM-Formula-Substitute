@@ -22,7 +22,7 @@ class TestUtilities(unittest.TestCase):
             ('桂枝去芍藥湯',), ('麻黃湯',), ('桂枝去芍藥湯', '麻黃湯'),
         ])
 
-    def test_objective_func(self):
+    def test_calculate_delta(self):
         database = {
             '桂枝湯': {'桂枝': 0.6, '白芍': 0.6, '生薑': 0.6, '大棗': 0.5, '炙甘草': 0.4},
             '桂枝去芍藥湯': {'桂枝': 0.6, '生薑': 0.6, '大棗': 0.5, '炙甘草': 0.4},
@@ -34,18 +34,18 @@ class TestUtilities(unittest.TestCase):
         penalty_factor = 2
 
         x = [1, 1]
-        delta = searcher.objective_func(x, target_composition, combination, database, penalty_factor)
+        delta = searcher.calculate_delta(x, target_composition, combination, database, penalty_factor)
         self.assertEqual(delta, 0.36)
 
         x = [2, 0]
-        delta = searcher.objective_func(x, target_composition, combination, database, penalty_factor)
+        delta = searcher.calculate_delta(x, target_composition, combination, database, penalty_factor)
         self.assertEqual(delta, 0)
 
         x = [0, 2]
-        delta = searcher.objective_func(x, target_composition, combination, database, penalty_factor)
+        delta = searcher.calculate_delta(x, target_composition, combination, database, penalty_factor)
         self.assertEqual(delta, 1.44)
 
-    def test_objective_func_with_penalty(self):
+    def test_calculate_delta_with_penalty(self):
         database = {
             '桂枝湯': {'桂枝': 0.6, '白芍': 0.6, '生薑': 0.6, '大棗': 0.5, '炙甘草': 0.4},
             '桂枝去芍藥湯': {'桂枝': 0.6, '生薑': 0.6, '大棗': 0.5, '炙甘草': 0.4},
@@ -57,15 +57,15 @@ class TestUtilities(unittest.TestCase):
         penalty_factor = 2
 
         x = [1, 1]
-        delta = searcher.objective_func(x, target_composition, combination, database, penalty_factor)
+        delta = searcher.calculate_delta(x, target_composition, combination, database, penalty_factor)
         self.assertEqual(delta, 2)
 
         x = [2, 0]
-        delta = searcher.objective_func(x, target_composition, combination, database, penalty_factor)
+        delta = searcher.calculate_delta(x, target_composition, combination, database, penalty_factor)
         self.assertEqual(delta, 2)
 
         x = [0, 2]
-        delta = searcher.objective_func(x, target_composition, combination, database, penalty_factor)
+        delta = searcher.calculate_delta(x, target_composition, combination, database, penalty_factor)
         self.assertEqual(delta, 2)
 
     def test_calculate_match(self):
