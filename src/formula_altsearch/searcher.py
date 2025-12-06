@@ -145,6 +145,14 @@ class FormulaSearcher(ABC):
         match_percentage = self.calculate_match_ratio(delta, variance) * 100
         return dosages, delta, match_percentage
 
+    def check_combination(self, combo, checked_combos, *, auto_add=True):
+        token = frozenset(combo)
+        if token in checked_combos:
+            return True
+        if auto_add:
+            checked_combos.add(token)
+        return False
+
 
 class ExhaustiveFormulaSearcher(FormulaSearcher):
     def find_best_matches(self, top_n=5):
@@ -156,6 +164,8 @@ class ExhaustiveFormulaSearcher(FormulaSearcher):
         log.debug('目標組成: %s', self.target_composition)
         log.debug('排除品項: %s', self.excludes)
         log.debug('總數: %i; 相關複方: %i; 相關單方: %i', len(self.database), len(self.cformulas), len(self.sformulas))
+
+        combos = set()
         for combo in self.generate_combinations():
             try:
                 dosages, delta, match_percentage = self.calculate_match(combo)
@@ -171,6 +181,12 @@ class ExhaustiveFormulaSearcher(FormulaSearcher):
                 log.debug('校正: %s %s', combo, np.round(dosages, 1))
             except ValueError:
                 # zip raises when all 0
+                continue
+
+            # skip duplicated combination
+            # (assuming that `scipy.optimize.minimize` has found the best dosages)
+            if self.check_combination(combo, combos):
+                log.debug('略過重複組合: %s', combo)
                 continue
 
             yield match_percentage, combo, dosages
