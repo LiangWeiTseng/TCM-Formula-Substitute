@@ -55,7 +55,7 @@ def find_best_matches(database, target_composition, top_n=5, *args, **kwargs):
 
 class FormulaSearcher(ABC):
     def __init__(self, database, target_composition, *,
-                 excludes=None, max_cformulas=2, max_sformulas=0, penalty_factor=2.0):
+                 excludes=None, max_cformulas=2, max_sformulas=2, penalty_factor=2.0):
         self.database = database
         self.target_composition = target_composition
         self.excludes = set() if excludes is None else excludes
@@ -82,20 +82,29 @@ class FormulaSearcher(ABC):
         self._compute_related_formulas()
         return self.__dict__['sformulas']
 
+    @cached_property
+    def herb_sformulas(self):
+        self._compute_related_formulas()
+        return self.__dict__['herb_sformulas']
+
     def _compute_related_formulas(self):
-        cformulas = []
-        sformulas = []
+        cformulas = {}
+        sformulas = {}
+        herb_sformulas = {}
         for item, composition in self.database.items():
             if item in self.excludes:
                 continue
             if not any(self.target_composition.get(herb, 0) for herb in composition):
                 continue
             if len(composition) > 1:
-                cformulas.append(item)
+                cformulas[item] = None
             else:
-                sformulas.append(item)
+                sformulas[item] = None
+                for herb in composition:
+                    herb_sformulas.setdefault(herb, []).append(item)
         self.__dict__['cformulas'] = cformulas
         self.__dict__['sformulas'] = sformulas
+        self.__dict__['herb_sformulas'] = herb_sformulas
 
     def get_combined_composition(self, formulas, dosages):
         combined_composition = {}
@@ -145,6 +154,19 @@ class FormulaSearcher(ABC):
         match_percentage = self.calculate_match_ratio(delta, variance) * 100
         return dosages, delta, match_percentage
 
+    def evaluate_combination(self, combo):
+        # raise ValueError if unable to find minimal dosages
+        dosages, delta, match_percentage = self.calculate_match(combo)
+        log.debug('估值 %s %s: %.3f (%.2f%%)', combo, dosages, delta, match_percentage)
+
+        # remove formulas with 0 dosage
+        # raise ValueError if combo/dosages is empty
+        dosages = np.round(dosages, 1)
+        fixed_combo, fixed_dosages = zip(*((f, d) for f, d in zip(combo, dosages) if d != 0))
+        log.debug('校正: %s %s', fixed_combo, np.round(fixed_dosages, 1))
+
+        return fixed_combo, fixed_dosages, match_percentage
+
     def check_combination(self, combo, checked_combos, *, auto_add=True):
         token = frozenset(combo)
         if token in checked_combos:
@@ -152,6 +174,32 @@ class FormulaSearcher(ABC):
         if auto_add:
             checked_combos.add(token)
         return False
+
+    def generate_combinations_for_sformulas(self, combination, dosages):
+        combined_composition = self.get_combined_composition(combination, dosages)
+        remaining_composition = {
+            herb: amount - combined_composition.get(herb, 0)
+            for herb, amount in self.target_composition.items()
+        }
+
+        weighted_herbs = sorted(remaining_composition.items(), key=lambda item: -item[1])
+        candidate_herbs = tuple(
+            herb for herb, amount in weighted_herbs
+            if herb in self.herb_sformulas and amount > 0.05
+        )
+        candidate_herbs_count = len(candidate_herbs)
+
+        stack = [(0, combination)]
+        while stack:
+            n, combo = stack.pop()
+            if n >= self.max_sformulas or n >= candidate_herbs_count:
+                if combo:
+                    yield combo
+                continue
+
+            herb = candidate_herbs[n]
+            for sformula in reversed(self.herb_sformulas[herb]):
+                stack.append((n + 1, combo + (sformula,)))
 
 
 class ExhaustiveFormulaSearcher(FormulaSearcher):
@@ -167,34 +215,43 @@ class ExhaustiveFormulaSearcher(FormulaSearcher):
 
         combos = set()
         for combo in self.generate_combinations():
-            try:
-                dosages, delta, match_percentage = self.calculate_match(combo)
-            except ValueError as exc:
-                log.debug('無法計算 %s 的最佳劑量: %s', combo, exc)
-                continue
-            log.debug('估值 %s %s: %.3f (%.2f%%)', combo, np.round(dosages, 3), delta, match_percentage)
+            if combo:
+                try:
+                    combo, dosages, match_percentage = self.evaluate_new_combination(combo, combos)
+                except ValueError:
+                    continue
+            else:
+                dosages = ()
 
-            # remove formulas with 0 dosage
-            dosages = np.round(dosages, 1)
-            try:
-                combo, dosages = zip(*((f, d) for f, d in zip(combo, dosages) if d != 0))
-                log.debug('校正: %s %s', combo, np.round(dosages, 1))
-            except ValueError:
-                # zip raises when all 0
-                continue
-
-            # skip duplicated combination
-            # (assuming that `scipy.optimize.minimize` has found the best dosages)
-            if self.check_combination(combo, combos):
-                log.debug('略過重複組合: %s', combo)
-                continue
-
-            yield match_percentage, combo, dosages
+            for extended_combo in self.generate_combinations_for_sformulas(combo, dosages):
+                if extended_combo != combo:
+                    try:
+                        extended_combo, dosages, match_percentage = self.evaluate_new_combination(extended_combo, combos)
+                    except ValueError:
+                        continue
+                yield match_percentage, extended_combo, dosages
 
     def generate_combinations(self):
-        for i1 in range(0, min(len(self.cformulas), self.max_cformulas) + 1):
-            for c1 in combinations(self.cformulas, i1):
-                for i2 in range(0, min(len(self.sformulas), self.max_sformulas) + 1):
-                    for c2 in combinations(self.sformulas, i2):
-                        if i1 or i2:
-                            yield *c1, *c2
+        for i in range(0, min(len(self.cformulas), self.max_cformulas) + 1):
+            for c in combinations(self.cformulas, i):
+                yield c
+
+    def evaluate_new_combination(self, combo, combos):
+        # skip duplicated combination
+        # (assuming that `scipy.optimize.minimize` has found the best dosages)
+        if self.check_combination(combo, combos):
+            log.debug('略過重複組合: %s', combo)
+            raise ValueError(f'Duplicated combo: {combo!r}')
+
+        try:
+            fixed_combo, dosages, match_percentage = self.evaluate_combination(combo)
+        except ValueError as exc:
+            log.debug('無法計算 %s 的最佳劑量: %s', combo, exc)
+            raise exc
+
+        # skip if fixed combination becomes duplicated
+        if fixed_combo != combo and self.check_combination(fixed_combo, combos):
+            log.debug('略過重複組合: %s', fixed_combo)
+            raise ValueError(f'Duplicated combo: {combo!r}')
+
+        return fixed_combo, dosages, match_percentage

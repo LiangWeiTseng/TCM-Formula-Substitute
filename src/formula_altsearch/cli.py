@@ -157,7 +157,7 @@ def parse_args(argv=None):
         help="""最大科中複方數 (預設: %(default)s)""",
     )
     parser_search.add_argument(
-        '--ms', '--max-sformulas', dest='max_sformulas', metavar='N', default=0, type=int, action='store',
+        '--ms', '--max-sformulas', dest='max_sformulas', metavar='N', default=2, type=int, action='store',
         help="""最大科中單方數 (預設: %(default)s)""",
     )
     parser_search.add_argument(

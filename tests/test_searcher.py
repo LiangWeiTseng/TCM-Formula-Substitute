@@ -105,16 +105,16 @@ class TestFormulaSearcher(unittest.TestCase):
             '白芍': 1.0, '杏仁': 1.0,
         }
         finder = searcher.ExhaustiveFormulaSearcher(database, target_composition)
-        self.assertEqual(finder.cformulas, ['桂枝湯', '麻黃湯'])
-        self.assertEqual(finder.sformulas, ['白芍'])
+        self.assertEqual(list(finder.cformulas), ['桂枝湯', '麻黃湯'])
+        self.assertEqual(list(finder.sformulas), ['白芍'])
 
         # filter by excludes
         target_composition = {
             '桂枝': 1.0, '白芍': 1.0, '生薑': 0.8,
         }
         finder = searcher.ExhaustiveFormulaSearcher(database, target_composition, excludes={'白芍'})
-        self.assertEqual(finder.cformulas, ['桂枝湯', '桂枝去芍藥湯', '麻黃湯'])
-        self.assertEqual(finder.sformulas, ['桂枝', '生薑'])
+        self.assertEqual(list(finder.cformulas), ['桂枝湯', '桂枝去芍藥湯', '麻黃湯'])
+        self.assertEqual(list(finder.sformulas), ['桂枝', '生薑'])
 
     def test_generate_combinations(self):
         database = {
@@ -129,6 +129,7 @@ class TestFormulaSearcher(unittest.TestCase):
 
         finder = searcher.ExhaustiveFormulaSearcher(database, target_composition, max_cformulas=3, max_sformulas=0)
         self.assertEqual(list(finder.generate_combinations()), [
+            (),
             ('桂枝湯',), ('桂枝去芍藥湯',), ('麻黃湯',),
             ('桂枝湯', '桂枝去芍藥湯'), ('桂枝湯', '麻黃湯'), ('桂枝去芍藥湯', '麻黃湯'),
             ('桂枝湯', '桂枝去芍藥湯', '麻黃湯'),
@@ -136,12 +137,114 @@ class TestFormulaSearcher(unittest.TestCase):
 
         finder = searcher.ExhaustiveFormulaSearcher(database, target_composition, max_cformulas=1, max_sformulas=0)
         self.assertEqual(list(finder.generate_combinations()), [
-            ('桂枝湯',), ('桂枝去芍藥湯',), ('麻黃湯',),
+            (), ('桂枝湯',), ('桂枝去芍藥湯',), ('麻黃湯',),
         ])
 
         finder = searcher.ExhaustiveFormulaSearcher(database, target_composition, max_cformulas=0, max_sformulas=3)
         self.assertEqual(list(finder.generate_combinations()), [
-            ('桂枝',), ('白芍',), ('桂枝', '白芍')
+            (),
+        ])
+
+    def test_generate_combinations_for_sformulas(self):
+        database = {
+            '桂枝甘草湯': {'桂枝': 0.8, '炙甘草': 0.6},
+            '芍藥甘草湯': {'白芍': 0.6, '炙甘草': 0.6},
+            '桂枝': {'桂枝': 1}, '白芍': {'白芍': 1}, '生薑': {'生薑': 0.8}, '炙甘草': {'炙甘草': 0.8},
+        }
+        target_composition = {
+            '桂枝': 1.2, '白芍': 1.2, '生薑': 1.0,
+        }
+        finder = searcher.ExhaustiveFormulaSearcher(database, target_composition, max_cformulas=1, max_sformulas=5)
+
+        # should supplement herbs with largest remaining dosage
+        combination = ()
+        dosages = ()
+        self.assertEqual(list(finder.generate_combinations_for_sformulas(combination, dosages)), [
+            ('桂枝', '白芍', '生薑'),
+        ])
+
+        combination = ('桂枝甘草湯',)
+        dosages = (1.5,)
+        self.assertEqual(list(finder.generate_combinations_for_sformulas(combination, dosages)), [
+            ('桂枝甘草湯', '白芍', '生薑'),
+        ])
+
+        combination = ('芍藥甘草湯',)
+        dosages = (2,)
+        self.assertEqual(list(finder.generate_combinations_for_sformulas(combination, dosages)), [
+            ('芍藥甘草湯', '桂枝', '生薑'),
+        ])
+
+        # should honor max_sformulas
+        finder = searcher.ExhaustiveFormulaSearcher(database, target_composition, max_cformulas=1, max_sformulas=1)
+
+        combination = ()
+        dosages = ()
+        self.assertEqual(list(finder.generate_combinations_for_sformulas(combination, dosages)), [
+            ('桂枝',),
+        ])
+
+        combination = ('桂枝甘草湯',)
+        dosages = (1.5,)
+        self.assertEqual(list(finder.generate_combinations_for_sformulas(combination, dosages)), [
+            ('桂枝甘草湯', '白芍'),
+        ])
+
+        combination = ('芍藥甘草湯',)
+        dosages = (2,)
+        self.assertEqual(list(finder.generate_combinations_for_sformulas(combination, dosages)), [
+            ('芍藥甘草湯', '桂枝'),
+        ])
+
+        # should honor max_sformulas
+        finder = searcher.ExhaustiveFormulaSearcher(database, target_composition, max_cformulas=1, max_sformulas=0)
+
+        # -- should not generate empty combination
+        combination = ()
+        dosages = ()
+        self.assertEqual(list(finder.generate_combinations_for_sformulas(combination, dosages)), [])
+
+        combination = ('桂枝甘草湯',)
+        dosages = (1.5,)
+        self.assertEqual(list(finder.generate_combinations_for_sformulas(combination, dosages)), [
+            ('桂枝甘草湯',),
+        ])
+
+        combination = ('芍藥甘草湯',)
+        dosages = (2,)
+        self.assertEqual(list(finder.generate_combinations_for_sformulas(combination, dosages)), [
+            ('芍藥甘草湯',),
+        ])
+
+        # should skip herbs with very low remaining dosage (<= 0.05)
+        database = {
+            '芍藥甘草湯': {'白芍': 0.6, '炙甘草': 0.38},
+            '白芍': {'白芍': 1}, '炙甘草': {'炙甘草': 1},
+        }
+        target_composition = {
+            '白芍': 1.2, '炙甘草': 0.8,
+        }
+        combination = ('芍藥甘草湯',)
+        dosages = (2,)
+        finder = searcher.ExhaustiveFormulaSearcher(database, target_composition, max_cformulas=1, max_sformulas=2)
+        self.assertEqual(list(finder.generate_combinations_for_sformulas(combination, dosages)), [
+            ('芍藥甘草湯',),
+        ])
+
+        # should generate all sformula combinations
+        database = {
+            '桂枝': {'桂枝': 1}, '製桂枝': {'桂枝': 0.8},
+            '白芍': {'白芍': 1}, '芍藥': {'白芍': 0.8}, '炒白芍': {'白芍': 1.2},
+        }
+        target_composition = {
+            '桂枝': 1.2, '白芍': 1.2,
+        }
+        combination = ()
+        dosages = ()
+        finder = searcher.ExhaustiveFormulaSearcher(database, target_composition, max_cformulas=1, max_sformulas=3)
+        self.assertEqual(list(finder.generate_combinations_for_sformulas(combination, dosages)), [
+            ('桂枝', '白芍'), ('桂枝', '芍藥'), ('桂枝', '炒白芍'),
+            ('製桂枝', '白芍'), ('製桂枝', '芍藥'), ('製桂枝', '炒白芍'),
         ])
 
     def test_calculate_delta(self):
