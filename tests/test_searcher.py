@@ -190,7 +190,7 @@ class TestFormulaSearcher(unittest.TestCase):
         x = [0, 2]
         self.assertAlmostEqual(finder.calculate_delta(x, combination), 0)
 
-    def test_calculate_match(self):
+    def test_find_best_dosages(self):
         database = {
             '桂枝湯': {'桂枝': 0.6, '白芍': 0.6, '生薑': 0.6, '大棗': 0.5, '炙甘草': 0.4},
             '桂枝去芍藥湯': {'桂枝': 0.6, '生薑': 0.6, '大棗': 0.5, '炙甘草': 0.4},
@@ -204,16 +204,14 @@ class TestFormulaSearcher(unittest.TestCase):
         combination = ['桂枝湯', '桂枝去芍藥湯']
         finder = searcher.ExhaustiveFormulaSearcher(
             database, target_composition, penalty_factor=penalty_factor)
-        dosages, delta, match_percentage = finder.calculate_match(combination)
+        dosages, delta = finder.find_best_dosages(combination)
         numpy.testing.assert_allclose(dosages, [2, 0], atol=1e-5)
         self.assertAlmostEqual(delta, 0, places=5)
-        self.assertAlmostEqual(match_percentage, 99.99997698778694)
 
         combination = ['桂枝去芍藥湯', '桂枝湯']
-        dosages, delta, match_percentage = finder.calculate_match(combination)
+        dosages, delta = finder.find_best_dosages(combination)
         numpy.testing.assert_allclose(dosages, [0, 2], atol=1e-5)
         self.assertAlmostEqual(delta, 0, places=5)
-        self.assertAlmostEqual(match_percentage, 99.99997698791584)
 
         target_composition = {
             '桂枝': 1.2, '白芍': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8, '白朮': 1.0,
@@ -221,10 +219,46 @@ class TestFormulaSearcher(unittest.TestCase):
         combination = ['桂枝湯', '桂枝去芍藥湯']
         finder = searcher.ExhaustiveFormulaSearcher(
             database, target_composition, penalty_factor=penalty_factor)
-        dosages, delta, match_percentage = finder.calculate_match(combination)
+        dosages, delta = finder.find_best_dosages(combination)
         numpy.testing.assert_allclose(dosages, [2, 0], atol=1e-5)
         self.assertAlmostEqual(delta, 1, places=5)
-        self.assertAlmostEqual(match_percentage, 62.09509782087723)
+
+    def test_calculate_match_ratio(self):
+        # calculate using variance when provided
+        finder = searcher.ExhaustiveFormulaSearcher({}, {})
+        self.assertAlmostEqual(finder.calculate_match_ratio(0.0, 1.0), 1.0)
+        self.assertAlmostEqual(finder.calculate_match_ratio(0.1, 1.0), 0.9)
+        self.assertAlmostEqual(finder.calculate_match_ratio(0.5, 1.0), 0.5)
+        self.assertAlmostEqual(finder.calculate_match_ratio(1.0, 1.0), 0.0)
+
+        self.assertAlmostEqual(finder.calculate_match_ratio(0.0, 0.5), 1.0)
+        self.assertAlmostEqual(finder.calculate_match_ratio(0.1, 0.5), 0.8)
+        self.assertAlmostEqual(finder.calculate_match_ratio(0.5, 0.5), 0.0)
+        self.assertAlmostEqual(finder.calculate_match_ratio(1.0, 0.5), -1.0)
+
+        self.assertAlmostEqual(finder.calculate_match_ratio(0.0, 0), 1)
+        self.assertAlmostEqual(finder.calculate_match_ratio(0.1, 0), 1)
+        self.assertAlmostEqual(finder.calculate_match_ratio(0.5, 0), 1)
+        self.assertAlmostEqual(finder.calculate_match_ratio(1.0, 0), 1)
+
+        # calculate using self variance when not provided
+        finder = searcher.ExhaustiveFormulaSearcher({}, {
+            '桂枝': 1.2, '白芍': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8,
+        })
+        self.assertAlmostEqual(finder.calculate_match_ratio(0.0), 1.0)
+        self.assertAlmostEqual(finder.calculate_match_ratio(0.01), 0.9959038403974048)
+        self.assertAlmostEqual(finder.calculate_match_ratio(0.1), 0.9590384039740479)
+        self.assertAlmostEqual(finder.calculate_match_ratio(0.5), 0.7951920198702399)
+        self.assertAlmostEqual(finder.calculate_match_ratio(1.0), 0.5903840397404798)
+
+        finder = searcher.ExhaustiveFormulaSearcher({}, {
+            '桂枝': 1.2, '白芍': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8, '杏仁': 1.0,
+        })
+        self.assertAlmostEqual(finder.calculate_match_ratio(0.0), 1.0)
+        self.assertAlmostEqual(finder.calculate_match_ratio(0.01), 0.9962095097821054)
+        self.assertAlmostEqual(finder.calculate_match_ratio(0.1), 0.9620950978210548)
+        self.assertAlmostEqual(finder.calculate_match_ratio(0.5), 0.8104754891052741)
+        self.assertAlmostEqual(finder.calculate_match_ratio(1.0), 0.6209509782105482)
 
     def test_find_best_matches(self):
         database = {

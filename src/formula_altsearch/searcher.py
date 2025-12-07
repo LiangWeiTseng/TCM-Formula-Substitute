@@ -107,36 +107,42 @@ class FormulaSearcher(ABC):
     def calculate_variance(self, composition):
         return sum(amount**2 for amount in composition.values()) ** 0.5
 
-    def calculate_delta(self, x, combination):
+    def calculate_delta(self, x, combination, target_composition=None):
+        target = self.target_composition if target_composition is None else target_composition
         combined_composition = self.get_combined_composition(combination, x)
 
         delta = 0
-        for herb, target_amount in self.target_composition.items():
+        for herb, target_amount in target.items():
             combined_amount = combined_composition.get(herb, 0)
             delta += (target_amount - combined_amount) ** 2
 
         for herb, amount in combined_composition.items():
-            if herb not in self.target_composition:
+            if herb not in target:
                 delta += (amount * self.penalty_factor) ** 2
 
         return delta ** 0.5
 
-    def calculate_match(self, combination):
-        initial_guess = [1 for _ in combination]
-        bounds = [(0, 200) for _ in combination]
-        result = minimize(self.calculate_delta, initial_guess, args=(combination,), method='SLSQP', bounds=bounds)
-
+    def find_best_dosages(self, combination, target_composition=None, *, initial_guess=None, bounds=None):
+        initial_guess = [1 for _ in combination] if initial_guess is None else initial_guess
+        bounds = [(0, 200) for _ in combination] if bounds is None else bounds
+        result = minimize(self.calculate_delta, initial_guess, args=(combination, target_composition),
+                          method='SLSQP', bounds=bounds)
         if not result.success:
-            return [], 0, 0
+            raise ValueError(f'Unable to find minimal dosages: {result.message}')
+        return result.x, result.fun
 
-        dosages = result.x
-        delta = result.fun
+    def calculate_match_ratio(self, delta, variance=None):
+        variance = self.variance if variance is None else variance
+        if variance == 0:
+            return 1.0
+        return 1.0 - delta / variance
 
-        if self.variance == 0:
-            match_percentage = 100
-        else:
-            match_percentage = 100 * (1 - delta / self.variance)
-
+    def calculate_match(self, combination, target_composition=None, *, initial_guess=None, bounds=None):
+        dosages, delta = self.find_best_dosages(
+            combination, target_composition, initial_guess=initial_guess, bounds=bounds)
+        variance = (None if target_composition is None
+                    else self.calculate_variance(target_composition))
+        match_percentage = self.calculate_match_ratio(delta, variance) * 100
         return dosages, delta, match_percentage
 
 
@@ -151,7 +157,11 @@ class ExhaustiveFormulaSearcher(FormulaSearcher):
         log.debug('排除品項: %s', self.excludes)
         log.debug('總數: %i; 相關複方: %i; 相關單方: %i', len(self.database), len(self.cformulas), len(self.sformulas))
         for combo in self.generate_combinations():
-            dosages, delta, match_percentage = self.calculate_match(combo)
+            try:
+                dosages, delta, match_percentage = self.calculate_match(combo)
+            except ValueError as exc:
+                log.debug('無法計算 %s 的最佳劑量: %s', combo, exc)
+                continue
             log.debug('估值 %s %s: %.3f (%.2f%%)', combo, np.round(dosages, 3), delta, match_percentage)
             yield match_percentage, combo, dosages
 
