@@ -131,14 +131,16 @@ class FormulaSearcher(ABC):
 
         return delta ** 0.5
 
-    def find_best_dosages(self, combination, target_composition=None, *, initial_guess=None, bounds=None):
+    def find_best_dosages(self, combination, target_composition=None, *, initial_guess=None,
+                          bounds=None, options=None, places=1):
         initial_guess = [1 for _ in combination] if initial_guess is None else initial_guess
-        bounds = [(0, 200) for _ in combination] if bounds is None else bounds
+        bounds = [(0, 50) for _ in combination] if bounds is None else bounds
+        options = {'ftol': 1e-3, 'eps': 1e-4, 'disp': False} if options is None else options
         result = minimize(self.calculate_delta, initial_guess, args=(combination, target_composition),
-                          method='SLSQP', bounds=bounds)
+                          method='SLSQP', bounds=bounds, options=options)
         if not result.success:
             raise ValueError(f'Unable to find minimal dosages: {result.message}')
-        return result.x, result.fun
+        return np.round(result.x, places), result.fun
 
     def calculate_match_ratio(self, delta, variance=None):
         variance = self.variance if variance is None else variance
@@ -161,8 +163,7 @@ class FormulaSearcher(ABC):
 
         # remove formulas with 0 dosage
         # raise ValueError if combo/dosages is empty
-        dosages = np.round(dosages, 1)
-        fixed_combo, fixed_dosages = zip(*((f, d) for f, d in zip(combo, dosages) if d != 0))
+        fixed_combo, fixed_dosages = zip(*((f, d) for f, d in zip(combo, dosages) if d > 0.05))
         log.debug('校正: %s %s', fixed_combo, np.round(fixed_dosages, 1))
 
         return fixed_combo, fixed_dosages, match_percentage

@@ -308,13 +308,13 @@ class TestFormulaSearcher(unittest.TestCase):
         finder = searcher.ExhaustiveFormulaSearcher(
             database, target_composition, penalty_factor=penalty_factor)
         dosages, delta = finder.find_best_dosages(combination)
-        numpy.testing.assert_allclose(dosages, [2, 0], atol=1e-5)
-        self.assertAlmostEqual(delta, 0, places=5)
+        numpy.testing.assert_allclose(dosages, [2, 0], atol=1e-3)
+        self.assertAlmostEqual(delta, 0, places=3)
 
         combination = ['桂枝去芍藥湯', '桂枝湯']
         dosages, delta = finder.find_best_dosages(combination)
-        numpy.testing.assert_allclose(dosages, [0, 2], atol=1e-5)
-        self.assertAlmostEqual(delta, 0, places=5)
+        numpy.testing.assert_allclose(dosages, [0, 2], atol=1e-3)
+        self.assertAlmostEqual(delta, 0, places=3)
 
         target_composition = {
             '桂枝': 1.2, '白芍': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8, '白朮': 1.0,
@@ -323,8 +323,8 @@ class TestFormulaSearcher(unittest.TestCase):
         finder = searcher.ExhaustiveFormulaSearcher(
             database, target_composition, penalty_factor=penalty_factor)
         dosages, delta = finder.find_best_dosages(combination)
-        numpy.testing.assert_allclose(dosages, [2, 0], atol=1e-5)
-        self.assertAlmostEqual(delta, 1, places=5)
+        numpy.testing.assert_allclose(dosages, [2, 0], atol=1e-3)
+        self.assertAlmostEqual(delta, 1, places=3)
 
     def test_calculate_match_ratio(self):
         # calculate using variance when provided
@@ -381,14 +381,14 @@ class TestFormulaSearcher(unittest.TestCase):
         self.assertEqual(len(best_matches), 2)
 
         match_percentage, combination, dosages = best_matches[0]
-        self.assertAlmostEqual(match_percentage, 99.99999987830432)
+        self.assertAlmostEqual(match_percentage, 99.99905054425756, places=3)
         self.assertEqual(combination, ('桂枝湯',))
-        numpy.testing.assert_allclose(dosages, [2], atol=1e-4)
+        numpy.testing.assert_allclose(dosages, [2], atol=1e-3)
 
         match_percentage, combination, dosages = best_matches[1]
-        self.assertAlmostEqual(match_percentage, 50.84608476251202)
+        self.assertAlmostEqual(match_percentage, 50.84596674545061, places=3)
         self.assertEqual(combination, ('桂枝去芍藥湯',))
-        numpy.testing.assert_allclose(dosages, [2], atol=1e-4)
+        numpy.testing.assert_allclose(dosages, [2], atol=1e-3)
 
         # with excludes
         finder = searcher.ExhaustiveFormulaSearcher(
@@ -398,6 +398,6 @@ class TestFormulaSearcher(unittest.TestCase):
         self.assertEqual(len(best_matches), 1)
 
         match_percentage, combination, dosages = best_matches[0]
-        self.assertAlmostEqual(match_percentage, 50.84608476251202)
+        self.assertAlmostEqual(match_percentage, 50.84596674545061, places=3)
         self.assertEqual(combination, ('桂枝去芍藥湯',))
-        numpy.testing.assert_allclose(dosages, [2], atol=1e-4)
+        numpy.testing.assert_allclose(dosages, [2], atol=1e-3)
