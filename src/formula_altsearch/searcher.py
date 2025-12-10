@@ -71,12 +71,17 @@ class FormulaSearcher(ABC):
     DEFAULT_TOP_N = 5
 
     def __init__(self, database, target_composition, *,
-                 excludes=None, max_cformulas=2, max_sformulas=2, penalty_factor=2.0, places=1):
+                 excludes=None, max_cformulas=2, max_sformulas=2,
+                 min_cformula_dose=0.0, min_sformula_dose=0.0,
+                 max_cformula_dose=50.0, max_sformula_dose=50.0,
+                 penalty_factor=2.0, places=1):
         self.database = database
         self.target_composition = target_composition
         self.excludes = set() if excludes is None else excludes
         self.max_cformulas = max_cformulas
         self.max_sformulas = max_sformulas
+        self.cformula_bounds = (min_cformula_dose, max_cformula_dose)
+        self.sformula_bounds = (min_sformula_dose, max_sformula_dose)
         self.penalty_factor = penalty_factor
         self.places = places
         self.evaluate_cache = {}
@@ -211,7 +216,10 @@ class FormulaSearcher(ABC):
     def find_best_dosages(self, combo, target_composition=None, *, initial_guess=None,
                           bounds=None, options=None):
         initial_guess = np.ones(len(combo)) if initial_guess is None else initial_guess
-        bounds = [(0, 50) for _ in combo] if bounds is None else bounds
+        bounds = [
+            self.sformula_bounds if f in self.sformulas else self.cformula_bounds
+            for f in combo
+        ] if bounds is None else bounds
         options = {
             'ftol': 10 ** (-self.places - 2),
             'disp': False,

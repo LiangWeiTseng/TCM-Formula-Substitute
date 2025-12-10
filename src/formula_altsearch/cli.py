@@ -129,6 +129,8 @@ def cmd_search(args):
 
     search(database, target_composition, algorithm=args.algorithm, top_n=args.num,
            excludes=excludes, max_cformulas=args.max_cformulas, max_sformulas=args.max_sformulas,
+           min_cformula_dose=args.min_cformula_dose, min_sformula_dose=args.min_sformula_dose,
+           max_cformula_dose=args.max_cformula_dose, max_sformula_dose=args.max_sformula_dose,
            penalty_factor=args.penalty,
            beam_width_factor=args.beam_width_factor, beam_multiplier=args.beam_multiplier)
 
@@ -218,6 +220,22 @@ def parse_args(argv=None):
     parser_search.add_argument(
         '--ms', '--max-sformulas', dest='max_sformulas', metavar='N', default=2, type=int, action='store',
         help="""最大科中單方數 (預設: %(default)s)""",
+    )
+    parser_search.add_argument(
+        '--min-cformula-dose', metavar='N', default=1.0, type=float, action='store',
+        help="""最小科中複方劑量 (預設: %(default)s)""",
+    )
+    parser_search.add_argument(
+        '--min-sformula-dose', metavar='N', default=0.3, type=float, action='store',
+        help="""最小科中單方劑量 (預設: %(default)s)""",
+    )
+    parser_search.add_argument(
+        '--max-cformula-dose', metavar='N', default=50.0, type=float, action='store',
+        help="""最大科中複方劑量 (預設: %(default)s)""",
+    )
+    parser_search.add_argument(
+        '--max-sformula-dose', metavar='N', default=50.0, type=float, action='store',
+        help="""最大科中單方劑量 (預設: %(default)s)""",
     )
     parser_search.add_argument(
         '-p', '--penalty', metavar='FACTOR', default=2.0, type=float, action='store',

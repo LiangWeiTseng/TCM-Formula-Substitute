@@ -22,6 +22,10 @@ class TestCmdSearch(unittest.TestCase):
             algorithm='exhaustive',
             max_cformulas=2,
             max_sformulas=3,
+            min_cformula_dose=1.0,
+            min_sformula_dose=0.3,
+            max_cformula_dose=50.0,
+            max_sformula_dose=50.0,
             penalty=3,
             num=6,
             excludes=[],
@@ -30,8 +34,12 @@ class TestCmdSearch(unittest.TestCase):
         ))
         m_load.assert_called_once_with('custom_db.yaml')
         m_search.assert_called_once_with(
-            m_load.return_value, {'桂枝': 9, '白芍': 6}, algorithm='exhaustive',
-            excludes={'桂枝湯'}, max_cformulas=2, max_sformulas=3, penalty_factor=3, top_n=6,
+            m_load.return_value, {'桂枝': 9, '白芍': 6},
+            algorithm='exhaustive', excludes={'桂枝湯'},
+            penalty_factor=3, top_n=6,
+            max_cformulas=2, max_sformulas=3,
+            min_cformula_dose=1.0, min_sformula_dose=0.3,
+            max_cformula_dose=50.0, max_sformula_dose=50.0,
             beam_width_factor=0.5, beam_multiplier=2.0,
         )
 
@@ -47,6 +55,10 @@ class TestCmdSearch(unittest.TestCase):
             algorithm='exhaustive',
             max_cformulas=2,
             max_sformulas=3,
+            min_cformula_dose=1.0,
+            min_sformula_dose=0.3,
+            max_cformula_dose=50.0,
+            max_sformula_dose=50.0,
             penalty=3,
             num=6,
             excludes=[],
@@ -69,6 +81,10 @@ class TestCmdSearch(unittest.TestCase):
             algorithm='exhaustive',
             max_cformulas=2,
             max_sformulas=3,
+            min_cformula_dose=1.0,
+            min_sformula_dose=0.3,
+            max_cformula_dose=50.0,
+            max_sformula_dose=50.0,
             penalty=3,
             num=6,
             excludes=[],
@@ -77,8 +93,12 @@ class TestCmdSearch(unittest.TestCase):
         ))
         m_load.assert_called_once_with('custom_db.yaml')
         m_search.assert_called_once_with(
-            m_load.return_value, {'桂枝': 13, '白芍': 6}, algorithm='exhaustive',
-            excludes={'桂枝湯'}, max_cformulas=2, max_sformulas=3, penalty_factor=3, top_n=6,
+            m_load.return_value, {'桂枝': 13, '白芍': 6},
+            algorithm='exhaustive', excludes={'桂枝湯'},
+            penalty_factor=3, top_n=6,
+            max_cformulas=2, max_sformulas=3,
+            min_cformula_dose=1.0, min_sformula_dose=0.3,
+            max_cformula_dose=50.0, max_sformula_dose=50.0,
             beam_width_factor=0.5, beam_multiplier=2.0,
         )
 
@@ -94,6 +114,10 @@ class TestCmdSearch(unittest.TestCase):
             algorithm='exhaustive',
             max_cformulas=2,
             max_sformulas=3,
+            min_cformula_dose=1.0,
+            min_sformula_dose=0.3,
+            max_cformula_dose=50.0,
+            max_sformula_dose=50.0,
             penalty=3,
             num=6,
             excludes=[],
@@ -116,6 +140,10 @@ class TestCmdSearch(unittest.TestCase):
             algorithm='exhaustive',
             max_cformulas=2,
             max_sformulas=3,
+            min_cformula_dose=1.0,
+            min_sformula_dose=0.3,
+            max_cformula_dose=50.0,
+            max_sformula_dose=50.0,
             penalty=5,
             num=10,
             excludes=[],
@@ -124,8 +152,12 @@ class TestCmdSearch(unittest.TestCase):
         ))
         m_load.assert_called_once_with('custom_db.yaml')
         m_search.assert_called_once_with(
-            m_load.return_value, {'桂枝': 4, '白芍': 2}, algorithm='exhaustive',
-            excludes=set(), max_cformulas=2, max_sformulas=3, penalty_factor=5, top_n=10,
+            m_load.return_value, {'桂枝': 4, '白芍': 2},
+            algorithm='exhaustive', excludes=set(),
+            penalty_factor=5, top_n=10,
+            max_cformulas=2, max_sformulas=3,
+            min_cformula_dose=1.0, min_sformula_dose=0.3,
+            max_cformula_dose=50.0, max_sformula_dose=50.0,
             beam_width_factor=0.5, beam_multiplier=2.0,
         )
 
@@ -141,6 +173,10 @@ class TestCmdSearch(unittest.TestCase):
             algorithm='exhaustive',
             max_cformulas=2,
             max_sformulas=3,
+            min_cformula_dose=1.0,
+            min_sformula_dose=0.3,
+            max_cformula_dose=50.0,
+            max_sformula_dose=50.0,
             penalty=5,
             num=10,
             excludes=[],
