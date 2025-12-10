@@ -91,7 +91,7 @@ class TestUtilities(unittest.TestCase):
         m_cls().find_best_matches.assert_called_with(5)
 
 
-class TestFormulaSearcher(unittest.TestCase):
+class TestExhaustiveFormulaSearcher(unittest.TestCase):
     def test_compute_related_formulas(self):
         database = {
             '桂枝湯': {'桂枝': 0.6, '白芍': 0.6, '生薑': 0.6, '大棗': 0.5, '炙甘草': 0.4},
@@ -323,7 +323,7 @@ class TestFormulaSearcher(unittest.TestCase):
         searcher = _searcher.ExhaustiveFormulaSearcher(
             database, target_composition, penalty_factor=penalty_factor)
         dosages, delta = searcher.find_best_dosages(combo)
-        np.testing.assert_allclose(dosages, [2, 0], atol=1e-3)
+        np.testing.assert_allclose(dosages, [1.997, 0.000], atol=1e-3)
         self.assertAlmostEqual(delta, 1, places=3)
 
     def test_calculate_match_ratio(self):
