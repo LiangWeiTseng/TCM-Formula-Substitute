@@ -81,8 +81,8 @@ class TestUtilities(unittest.TestCase):
     @mock.patch.object(_searcher, 'BeamFormulaSearcher')
     def test_find_best_matches(self, m_cls):
         _searcher.find_best_matches({}, {}, excludes=None, penalty_factor=2.0)
-        m_cls.assert_called_with({}, {}, excludes=None, penalty_factor=2.0)
-        m_cls().find_best_matches.assert_called_with(None)
+        m_cls.assert_called_with({})
+        m_cls().find_best_matches.assert_called_with(None, {}, excludes=None, penalty_factor=2.0)
 
 
 class TestExhaustiveFormulaSearcher(unittest.TestCase):
@@ -96,14 +96,15 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
         }
 
     def test_compute_related_formulas(self):
+        searcher = _searcher.ExhaustiveFormulaSearcher(self.database)
+
         # filter by target_composition
-        searcher = _searcher.ExhaustiveFormulaSearcher(self.database, {'白芍': 1.0, '杏仁': 1.0})
+        searcher._set_context({'白芍': 1.0, '杏仁': 1.0})
         self.assertEqual(list(searcher.cformulas), ['桂枝湯', '麻黃湯'])
         self.assertEqual(list(searcher.sformulas), ['白芍'])
 
         # filter by excludes
-        searcher = _searcher.ExhaustiveFormulaSearcher(
-            self.database, {'桂枝': 1.0, '白芍': 1.0, '生薑': 0.8}, excludes={'白芍', '桂枝去芍藥湯'})
+        searcher._set_context({'桂枝': 1.0, '白芍': 1.0, '生薑': 0.8}, excludes={'白芍', '桂枝去芍藥湯'})
         self.assertEqual(list(searcher.cformulas), ['桂枝湯', '麻黃湯'])
         self.assertEqual(list(searcher.sformulas), ['桂枝', '生薑'])
 
@@ -111,8 +112,9 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
         target_composition = {
             '桂枝': 1.0, '白芍': 1.0, '杏仁': 1.0,
         }
+        searcher = _searcher.ExhaustiveFormulaSearcher(self.database)
 
-        searcher = _searcher.ExhaustiveFormulaSearcher(self.database, target_composition, max_cformulas=3, max_sformulas=0)
+        searcher._set_context(target_composition, max_cformulas=3, max_sformulas=0)
         self.assertEqual(list(searcher.generate_combinations()), [
             (),
             ('桂枝湯',), ('桂枝去芍藥湯',), ('麻黃湯',),
@@ -120,12 +122,12 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
             ('桂枝湯', '桂枝去芍藥湯', '麻黃湯'),
         ])
 
-        searcher = _searcher.ExhaustiveFormulaSearcher(self.database, target_composition, max_cformulas=1, max_sformulas=0)
+        searcher._set_context(target_composition, max_cformulas=1, max_sformulas=0)
         self.assertEqual(list(searcher.generate_combinations()), [
             (), ('桂枝湯',), ('桂枝去芍藥湯',), ('麻黃湯',),
         ])
 
-        searcher = _searcher.ExhaustiveFormulaSearcher(self.database, target_composition, max_cformulas=0, max_sformulas=3)
+        searcher._set_context(target_composition, max_cformulas=0, max_sformulas=3)
         self.assertEqual(list(searcher.generate_combinations()), [
             (),
         ])
@@ -139,9 +141,10 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
         target_composition = {
             '桂枝': 1.2, '白芍': 1.2, '生薑': 1.0,
         }
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
 
         # should supplement herbs with largest remaining dosage
-        searcher = _searcher.ExhaustiveFormulaSearcher(database, target_composition, max_cformulas=1, max_sformulas=5)
+        searcher._set_context(target_composition, max_cformulas=1, max_sformulas=5)
         self.assertEqual(
             list(searcher.generate_combinations_for_sformulas((), ())),
             [('桂枝', '白芍', '生薑')],
@@ -156,7 +159,7 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
         )
 
         # should honor max_sformulas
-        searcher = _searcher.ExhaustiveFormulaSearcher(database, target_composition, max_cformulas=1, max_sformulas=1)
+        searcher._set_context(target_composition, max_cformulas=1, max_sformulas=1)
         self.assertEqual(
             list(searcher.generate_combinations_for_sformulas((), ())),
             [('桂枝',)],
@@ -171,7 +174,7 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
         )
 
         # should honor max_sformulas
-        searcher = _searcher.ExhaustiveFormulaSearcher(database, target_composition, max_cformulas=1, max_sformulas=0)
+        searcher._set_context(target_composition, max_cformulas=1, max_sformulas=0)
         # -- should not generate empty combos
         self.assertEqual(
             list(searcher.generate_combinations_for_sformulas((), ())),
@@ -197,12 +200,13 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
         combo = ('芍藥甘草湯',)
         dosages = (2,)
 
-        searcher = _searcher.ExhaustiveFormulaSearcher(database, target_composition, max_cformulas=1, max_sformulas=2, places=1)
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
+        searcher._set_context(target_composition, max_cformulas=1, max_sformulas=2, places=1)
         self.assertEqual(list(searcher.generate_combinations_for_sformulas(combo, dosages)), [
             ('芍藥甘草湯',),
         ])
 
-        searcher = _searcher.ExhaustiveFormulaSearcher(database, target_composition, max_cformulas=1, max_sformulas=2, places=2)
+        searcher._set_context(target_composition, max_cformulas=1, max_sformulas=2, places=2)
         self.assertEqual(list(searcher.generate_combinations_for_sformulas(combo, dosages)), [
             ('芍藥甘草湯', '炙甘草'),
         ])
@@ -215,7 +219,8 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
         target_composition = {
             '桂枝': 1.2, '白芍': 1.2,
         }
-        searcher = _searcher.ExhaustiveFormulaSearcher(database, target_composition, max_cformulas=1, max_sformulas=3)
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
+        searcher._set_context(target_composition, max_cformulas=1, max_sformulas=3)
         self.assertEqual(list(searcher.generate_combinations_for_sformulas((), ())), [
             ('桂枝', '白芍'), ('桂枝', '芍藥'), ('桂枝', '炒白芍'),
             ('製桂枝', '白芍'), ('製桂枝', '芍藥'), ('製桂枝', '炒白芍'),
@@ -230,8 +235,8 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
             '桂枝': 1.2, '白芍': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8,
         }
 
-        searcher = _searcher.ExhaustiveFormulaSearcher(
-            database, target_composition, penalty_factor=2.0)
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
+        searcher._set_context(target_composition, penalty_factor=2.0)
         self.assertEqual(searcher.calculate_delta([1, 1], ['桂枝湯', '桂枝去芍藥湯']), 0.6)
         self.assertEqual(searcher.calculate_delta([2, 0], ['桂枝湯', '桂枝去芍藥湯']), 0)
         self.assertEqual(searcher.calculate_delta([0, 2], ['桂枝湯', '桂枝去芍藥湯']), 1.2)
@@ -245,8 +250,8 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
             '桂枝': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8,
         }
 
-        searcher = _searcher.ExhaustiveFormulaSearcher(
-            database, target_composition, penalty_factor=2.0)
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
+        searcher._set_context(target_composition, penalty_factor=2.0)
         self.assertEqual(searcher.calculate_delta([1, 1], ['桂枝湯', '桂枝去芍藥湯']), 1.2)
         self.assertEqual(searcher.calculate_delta([2, 0], ['桂枝湯', '桂枝去芍藥湯']), 2.4)
         self.assertEqual(searcher.calculate_delta([0, 2], ['桂枝湯', '桂枝去芍藥湯']), 0)
@@ -257,36 +262,31 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
             '桂枝去芍藥湯': {'桂枝': 0.6, '生薑': 0.6, '大棗': 0.5, '炙甘草': 0.4},
             '苓桂朮甘湯': {'桂枝': 1, '茯苓': 1, '白朮': 0.8, '炙甘草': 0.4},
         }
-        target_composition = {
-            '桂枝': 1.2, '白芍': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8,
-        }
-        penalty_factor = 2.0
 
-        combo = ['桂枝湯', '桂枝去芍藥湯']
-        searcher = _searcher.ExhaustiveFormulaSearcher(
-            database, target_composition, penalty_factor=penalty_factor)
-        dosages, delta = searcher.find_best_dosages(combo)
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
+        searcher._set_context({
+            '桂枝': 1.2, '白芍': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8,
+        }, penalty_factor=2.0)
+
+        dosages, delta = searcher.find_best_dosages(['桂枝湯', '桂枝去芍藥湯'])
         np.testing.assert_allclose(dosages, [2, 0], atol=1e-3)
         self.assertAlmostEqual(delta, 0, places=3)
 
-        combo = ['桂枝去芍藥湯', '桂枝湯']
-        dosages, delta = searcher.find_best_dosages(combo)
+        dosages, delta = searcher.find_best_dosages(['桂枝去芍藥湯', '桂枝湯'])
         np.testing.assert_allclose(dosages, [0, 2], atol=1e-3)
         self.assertAlmostEqual(delta, 0, places=3)
 
-        target_composition = {
+        searcher._set_context({
             '桂枝': 1.2, '白芍': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8, '白朮': 1.0,
-        }
-        combo = ['桂枝湯', '桂枝去芍藥湯']
-        searcher = _searcher.ExhaustiveFormulaSearcher(
-            database, target_composition, penalty_factor=penalty_factor)
-        dosages, delta = searcher.find_best_dosages(combo)
+        }, penalty_factor=2.0)
+        dosages, delta = searcher.find_best_dosages(['桂枝湯', '桂枝去芍藥湯'])
         np.testing.assert_allclose(dosages, [1.997, 0.000], atol=1e-3)
         self.assertAlmostEqual(delta, 1, places=3)
 
     def test_calculate_match_ratio(self):
         # calculate using variance when provided
-        searcher = _searcher.ExhaustiveFormulaSearcher(self.database, {})
+        searcher = _searcher.ExhaustiveFormulaSearcher(self.database)
+        searcher._set_context({})
         self.assertAlmostEqual(searcher.calculate_match_ratio(0.0, 1.0), 1.0)
         self.assertAlmostEqual(searcher.calculate_match_ratio(0.1, 1.0), 0.9)
         self.assertAlmostEqual(searcher.calculate_match_ratio(0.5, 1.0), 0.5)
@@ -303,18 +303,16 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
         self.assertAlmostEqual(searcher.calculate_match_ratio(1.0, 0), 1)
 
         # calculate using self.variance when not provided
-        searcher = _searcher.ExhaustiveFormulaSearcher(self.database, {
-            '桂枝': 1.2, '白芍': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8,
-        })
+        searcher = _searcher.ExhaustiveFormulaSearcher(self.database)
+        searcher._set_context({'桂枝': 1.2, '白芍': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8})
         self.assertAlmostEqual(searcher.calculate_match_ratio(0.0), 1.0)
         self.assertAlmostEqual(searcher.calculate_match_ratio(0.01), 0.9959038403974048)
         self.assertAlmostEqual(searcher.calculate_match_ratio(0.1), 0.9590384039740479)
         self.assertAlmostEqual(searcher.calculate_match_ratio(0.5), 0.7951920198702399)
         self.assertAlmostEqual(searcher.calculate_match_ratio(1.0), 0.5903840397404798)
 
-        searcher = _searcher.ExhaustiveFormulaSearcher(self.database, {
-            '桂枝': 1.2, '白芍': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8, '杏仁': 1.0,
-        })
+        searcher = _searcher.ExhaustiveFormulaSearcher(self.database)
+        searcher._set_context({'桂枝': 1.2, '白芍': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8, '杏仁': 1.0})
         self.assertAlmostEqual(searcher.calculate_match_ratio(0.0), 1.0)
         self.assertAlmostEqual(searcher.calculate_match_ratio(0.01), 0.9962095097821054)
         self.assertAlmostEqual(searcher.calculate_match_ratio(0.1), 0.9620950978210548)
@@ -330,12 +328,10 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
             '桂枝': 1.2, '白芍': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8,
         }
         penalty_factor = 2.0
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
 
         # without excludes
-        searcher = _searcher.ExhaustiveFormulaSearcher(
-            database, target_composition, penalty_factor=penalty_factor)
-        best_matches = searcher.find_best_matches()
-
+        best_matches = searcher.find_best_matches(5, target_composition, penalty_factor=penalty_factor)
         self.assertEqual(len(best_matches), 2)
 
         match_pct, combo, dosages = best_matches[0]
@@ -349,10 +345,8 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
         np.testing.assert_allclose(dosages, [2], atol=1e-3)
 
         # with excludes
-        searcher = _searcher.ExhaustiveFormulaSearcher(
-            database, target_composition, excludes={'桂枝湯'}, penalty_factor=penalty_factor)
-        best_matches = searcher.find_best_matches()
-
+        best_matches = searcher.find_best_matches(
+            5, target_composition, excludes={'桂枝湯'}, penalty_factor=penalty_factor)
         self.assertEqual(len(best_matches), 1)
 
         match_pct, combo, dosages = best_matches[0]

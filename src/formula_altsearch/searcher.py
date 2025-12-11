@@ -3,7 +3,6 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from contextlib import nullcontext
-from functools import cached_property
 from itertools import combinations
 from math import ceil, sqrt
 
@@ -58,11 +57,11 @@ def find_best_matches(database, target_composition, top_n=None, algorithm='beam'
     }.items() if v is not undefined}
 
     if algorithm == 'beam':
-        searcher = BeamFormulaSearcher(database, target_composition, **opts, **beam_opts)
-        return searcher.find_best_matches(top_n)
+        searcher = BeamFormulaSearcher(database)
+        return searcher.find_best_matches(top_n, target_composition, **opts, **beam_opts)
     elif algorithm == 'exhaustive':
-        searcher = ExhaustiveFormulaSearcher(database, target_composition, **opts)
-        return searcher.find_best_matches(top_n)
+        searcher = ExhaustiveFormulaSearcher(database)
+        return searcher.find_best_matches(top_n, target_composition, **opts)
     else:
         raise ValueError(f'未支援此演算法: {algorithm}')
 
@@ -70,12 +69,16 @@ def find_best_matches(database, target_composition, top_n=None, algorithm='beam'
 class FormulaSearcher(ABC):
     DEFAULT_TOP_N = 5
 
-    def __init__(self, database, target_composition, *,
-                 excludes=None, max_cformulas=2, max_sformulas=2,
-                 min_cformula_dose=0.0, min_sformula_dose=0.0,
-                 max_cformula_dose=50.0, max_sformula_dose=50.0,
-                 penalty_factor=2.0, places=1):
+    def __init__(self, database):
         self.database = database
+
+    def _set_context(
+        self, target_composition, excludes=None, top_n=None, *,
+        max_cformulas=2, max_sformulas=2,
+        min_cformula_dose=0.0, min_sformula_dose=0.0,
+        max_cformula_dose=50.0, max_sformula_dose=50.0,
+        penalty_factor=2.0, places=1,
+    ):
         self.target_composition = target_composition
         self.excludes = set() if excludes is None else excludes
         self.max_cformulas = max_cformulas
@@ -84,20 +87,44 @@ class FormulaSearcher(ABC):
         self.sformula_bounds = (min_sformula_dose, max_sformula_dose)
         self.penalty_factor = penalty_factor
         self.places = places
-        self.evaluate_cache = {}
 
-    def find_best_matches(self, top_n=None):
+        self.evaluate_cache = {}
+        self.variance = self.calculate_variance(self.target_composition)
+
+        self._compute_related_formulas()
+
+    def _compute_related_formulas(self):
+        cformulas = {}
+        sformulas = {}
+        herb_sformulas = {}
+        for item, composition in self.database.items():
+            if item in self.excludes:
+                continue
+            if not any(self.target_composition.get(herb, 0) for herb in composition):
+                continue
+            if len(composition) > 1:
+                cformulas[item] = None
+            else:
+                sformulas[item] = None
+                for herb in composition:
+                    herb_sformulas.setdefault(herb, []).append(item)
+        self.cformulas = cformulas
+        self.sformulas = sformulas
+        self.herb_sformulas = herb_sformulas
+
+    def find_best_matches(self, top_n=None, *args, **kwargs):
         top_n = self.DEFAULT_TOP_N if top_n is None else top_n
-        gen = self.find_unique_matches()
+        gen = self.find_unique_matches(*args, top_n=top_n, **kwargs)
         matches = heapq.nlargest(top_n, gen, key=lambda x: x[0])
         return matches
 
-    def find_unique_matches(self):
+    def find_unique_matches(self, *args, **kwargs):
+        self._set_context(*args, **kwargs)
+
         log.debug('目標組成: %s', self.target_composition)
         log.debug('排除品項: %s', self.excludes)
         log.debug('總數: %i; 相關複方: %i; 相關單方: %i', len(self.database), len(self.cformulas), len(self.sformulas))
 
-        self.evaluate_cache = {}
         combos = set()
         for match_pct, combo, dosages in self.find_matches():
             key = frozenset(combo)
@@ -131,45 +158,6 @@ class FormulaSearcher(ABC):
     @abstractmethod
     def generate_combinations(self):
         pass
-
-    @cached_property
-    def variance(self):
-        self.__dict__['variance'] = self.calculate_variance(self.target_composition)
-        return self.__dict__['variance']
-
-    @cached_property
-    def cformulas(self):
-        self._compute_related_formulas()
-        return self.__dict__['cformulas']
-
-    @cached_property
-    def sformulas(self):
-        self._compute_related_formulas()
-        return self.__dict__['sformulas']
-
-    @cached_property
-    def herb_sformulas(self):
-        self._compute_related_formulas()
-        return self.__dict__['herb_sformulas']
-
-    def _compute_related_formulas(self):
-        cformulas = {}
-        sformulas = {}
-        herb_sformulas = {}
-        for item, composition in self.database.items():
-            if item in self.excludes:
-                continue
-            if not any(self.target_composition.get(herb, 0) for herb in composition):
-                continue
-            if len(composition) > 1:
-                cformulas[item] = None
-            else:
-                sformulas[item] = None
-                for herb in composition:
-                    herb_sformulas.setdefault(herb, []).append(item)
-        self.__dict__['cformulas'] = cformulas
-        self.__dict__['sformulas'] = sformulas
-        self.__dict__['herb_sformulas'] = herb_sformulas
 
     def get_formula_composition(self, formulas, dosages):
         composition = {}
@@ -336,26 +324,16 @@ class ExhaustiveFormulaSearcher(FormulaSearcher):
 
 
 class BeamFormulaSearcher(FormulaSearcher):
-    def __init__(self, database, target_composition, *,
-                 beam_width_factor=2.0, beam_multiplier=3.0, main_herb_threshold=0.6,
-                 **opts):
-        super().__init__(database, target_composition, **opts)
-        self.beam_width_factor = beam_width_factor
+    def _set_context(
+        self, target_composition, excludes=None, top_n=None, *,
+        beam_width_factor=2.0, beam_multiplier=3.0, main_herb_threshold=0.6,
+        **opts,
+    ):
+        top_n = self.DEFAULT_TOP_N if top_n is None else top_n
+        super()._set_context(target_composition, excludes, top_n, **opts)
+        self.beam_width = max(ceil(beam_width_factor * top_n), 1)
         self.beam_multiplier = beam_multiplier
         self.main_herb_threshold = main_herb_threshold
-
-    @cached_property
-    def beam_width(self):
-        value = self.__dict__['beam_width'] = self._calculate_beam_width(self.DEFAULT_TOP_N)
-        return value
-
-    def _calculate_beam_width(self, top_n):
-        return max(ceil(self.beam_width_factor * top_n), 1)
-
-    def find_best_matches(self, top_n=None):
-        top_n = self.DEFAULT_TOP_N if top_n is None else top_n
-        self.__dict__['beam_width'] = self._calculate_beam_width(top_n)
-        return super().find_best_matches(top_n)
 
     def generate_combinations(self):
         candidates = [(0, 100.0, (), ())]
