@@ -326,7 +326,7 @@ class ExhaustiveFormulaSearcher(FormulaSearcher):
 class BeamFormulaSearcher(FormulaSearcher):
     def _set_context(
         self, target_composition, excludes=None, top_n=None, *,
-        beam_width_factor=2.0, beam_multiplier=3.0,
+        beam_width_factor=2.0, beam_multiplier=5.0,
         **opts,
     ):
         top_n = self.DEFAULT_TOP_N if top_n is None else top_n
@@ -363,18 +363,29 @@ class BeamFormulaSearcher(FormulaSearcher):
             yield item
 
     def generate_combinations_at_depth(self, depth, candidates):
+        next_candidates = []
         for item in candidates:
             yield item
 
             n, _, combo, dosages = item
-            if n < depth:
-                continue
+            if n >= depth:
+                next_candidates.append(item)
 
+        if not next_candidates:
+            return
+
+        # pool_size (max combos to evaluate) ~= beam_width * beam_multiplier
+        # Share pool_size among next_candidates in case they are less than beam_width.
+        # The actual pool_size = quota * len(next_candidates) may be slightly higher than
+        # the expected value.
+        if self.beam_multiplier > 0:
+            quota = ceil(self.beam_width * self.beam_multiplier / len(next_candidates))
+
+        for _, _, combo, dosages in next_candidates:
             combo_set = set(combo)
             gen = (f for f in self.cformulas if f not in combo_set)
             if self.beam_multiplier > 0:
-                pool_size = ceil(self.beam_width * self.beam_multiplier)
-                gen = self.generate_heuristic_candidates(combo, dosages, pool_size, gen)
+                gen = self.generate_heuristic_candidates(combo, dosages, quota, gen)
 
             _new_dosages = np.append(dosages, (1.0,))
             for formula in gen:
@@ -389,12 +400,12 @@ class BeamFormulaSearcher(FormulaSearcher):
                 new_item = depth + 1, match_pct, new_combo, new_dosages
                 yield new_item
 
-    def generate_heuristic_candidates(self, combo, dosages, pool_size, gen):
+    def generate_heuristic_candidates(self, combo, dosages, quota, gen):
         remaining_map = self._calculate_remaining_map(combo, dosages)
         log.debug('剩餘組成比: %s', remaining_map)
 
         candidate_formulas = heapq.nlargest(
-            pool_size,
+            quota,
             gen,
             key=lambda f: self._calculate_formula_score(f, remaining_map),
         )

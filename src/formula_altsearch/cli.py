@@ -350,7 +350,7 @@ def parse_args(argv=None):
 一般建議用在最佳匹配結果輸出筆數較大，導致運算速度過慢時，適當降低此值。 (預設: %(default)s)""",
     )
     parser_search.add_argument(
-        '--bm', '--beam-mutliplier', dest='beam_multiplier', metavar='FACTOR', default=3.0,
+        '--bm', '--beam-mutliplier', dest='beam_multiplier', metavar='FACTOR', default=5.0,
         type=bounded_float(0.0), action='store',
         help="""集束搜尋演算法的集束擴充倍率。例如當集束寬度為 10，而此值為 3.0 時，精算取樣上限為 30 \
 (= 10 * 3.0)，演算法會在篩選每層最佳結果時，先用快捷算式搜集 30 個最佳樣本，再對這些樣本做精確匹配度計算\

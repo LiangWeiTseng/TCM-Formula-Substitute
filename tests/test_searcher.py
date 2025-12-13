@@ -520,7 +520,7 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         return combo, (1.0,) * len(combo), 100.0
 
     @staticmethod
-    def _se_heur(_combo, _dosages, _pool_size, gen):
+    def _se_heur(_combo, _dosages, _quota, gen):
         return gen
 
     def test_generate_combinations_max_depth(self):
@@ -573,15 +573,15 @@ class TestBeamFormulaSearcher(unittest.TestCase):
             self.assertEqual(combos, [
                 (),
                 ('甲複方',),
+                ('乙複方',),
+                ('丙複方',),
+                ('丁複方',),
                 ('甲複方', '乙複方'),
                 ('甲複方', '丙複方'),
                 ('甲複方', '丁複方'),
-                ('乙複方',),
                 ('乙複方', '丙複方'),
                 ('乙複方', '丁複方'),
-                ('丙複方',),
                 ('丙複方', '丁複方'),
-                ('丁複方',),
             ])
             self.assertListEqual(m_gen.call_args_list, [
                 mock.call(0, [
@@ -607,19 +607,19 @@ class TestBeamFormulaSearcher(unittest.TestCase):
             self.assertEqual(combos, [
                 (),
                 ('甲複方',),
+                ('乙複方',),
+                ('丙複方',),
+                ('丁複方',),
                 ('甲複方', '乙複方'),
+                ('甲複方', '丙複方'),
+                ('甲複方', '丁複方'),
+                ('乙複方', '丙複方'),
+                ('乙複方', '丁複方'),
+                ('丙複方', '丁複方'),
                 ('甲複方', '乙複方', '丙複方'),
                 ('甲複方', '乙複方', '丁複方'),
-                ('甲複方', '丙複方'),
                 ('甲複方', '丙複方', '丁複方'),
-                ('甲複方', '丁複方'),
-                ('乙複方',),
-                ('乙複方', '丙複方'),
                 ('乙複方', '丙複方', '丁複方'),
-                ('乙複方', '丁複方'),
-                ('丙複方',),
-                ('丙複方', '丁複方'),
-                ('丁複方',),
             ])
             self.assertListEqual(m_gen.call_args_list, [
                 mock.call(0, [
@@ -635,15 +635,15 @@ class TestBeamFormulaSearcher(unittest.TestCase):
                 mock.call(2, [
                     (0, 100.0, (), ()),
                     (1, 100.0, ('甲複方',), (1.0,)),
+                    (1, 100.0, ('乙複方',), (1.0,)),
+                    (1, 100.0, ('丙複方',), (1.0,)),
+                    (1, 100.0, ('丁複方',), (1.0,)),
                     (2, 100.0, ('甲複方', '乙複方'), (1.0, 1.0)),
                     (2, 100.0, ('甲複方', '丙複方'), (1.0, 1.0)),
                     (2, 100.0, ('甲複方', '丁複方'), (1.0, 1.0)),
-                    (1, 100.0, ('乙複方',), (1.0,)),
                     (2, 100.0, ('乙複方', '丙複方'), (1.0, 1.0)),
                     (2, 100.0, ('乙複方', '丁複方'), (1.0, 1.0)),
-                    (1, 100.0, ('丙複方',), (1.0,)),
                     (2, 100.0, ('丙複方', '丁複方'), (1.0, 1.0)),
-                    (1, 100.0, ('丁複方',), (1.0,)),
                 ]),
             ])
 
@@ -665,9 +665,9 @@ class TestBeamFormulaSearcher(unittest.TestCase):
             self.assertEqual(combos, [
                 (),
                 ('甲複方', '乙複方'),
+                ('甲複方', '丙複方'),
                 ('甲複方', '乙複方', '丙複方'),
                 ('甲複方', '乙複方', '丁複方'),
-                ('甲複方', '丙複方'),
                 ('甲複方', '丙複方', '丁複方'),
             ])
             self.assertListEqual(m_gen.call_args_list, [
@@ -767,10 +767,10 @@ class TestBeamFormulaSearcher(unittest.TestCase):
             self.assertEqual(items, [
                 (0, 100.0, (), ()),
                 (1, 100.0, ('丁複方',), (1.0,)),
+                (1, 100.0, ('丙複方',), (1.0,)),
                 (2, 100.0, ('丁複方', '丙複方'), (1.0, 1.0)),
                 (2, 100.0, ('丁複方', '乙複方'), (1.0, 1.0)),
                 (2, 100.0, ('丁複方', '甲複方'), (1.0, 1.0)),
-                (1, 100.0, ('丙複方',), (1.0,)),
                 (2, 100.0, ('丙複方', '丁複方'), (1.0, 1.0)),
                 (2, 100.0, ('丙複方', '乙複方'), (1.0, 1.0)),
                 (2, 100.0, ('丙複方', '甲複方'), (1.0, 1.0)),
@@ -795,16 +795,17 @@ class TestBeamFormulaSearcher(unittest.TestCase):
     def test_generate_combinations_at_depth_pool_size_basic(self):
         """Should limit extended combos within pool_size.
 
-        - Expected pool_size = (top_n * beam_width_factor) * beam_multiplier
+        - Expected pool_size ~= (top_n * beam_width_factor) * beam_multiplier
+        - Expected quota = ceil((top_n * beam_width_factor) * beam_multiplier / len(next_candidates))
+        - Actual pool_size = quota * len(next_candidates)
         """
         database, target_composition = self._sample_data()
         searcher = _searcher.BeamFormulaSearcher(database)
-
-        # Expected pool_size = (1 * 1) * 2 = 2
         searcher._set_context(target_composition, top_n=1,
-                              beam_width_factor=1, beam_multiplier=2)
+                              beam_width_factor=2, beam_multiplier=1.5)
 
         # depth 0
+        # Expected quota = ceil((1 * 2) * 1.5 / 1) = 3
         candidates = [(0, 100.0, (), ())]
         with mock.patch.object(searcher, 'evaluate_combination', side_effect=self._se_eval), \
              mock.patch.object(searcher, 'generate_heuristic_candidates',
@@ -814,12 +815,14 @@ class TestBeamFormulaSearcher(unittest.TestCase):
                 (0, 100.0, (), ()),
                 (1, 100.0, ('丁複方',), (1.0,)),
                 (1, 100.0, ('丙複方',), (1.0,)),
+                (1, 100.0, ('乙複方',), (1.0,)),
             ])
             self.assertListEqual(m_heur.call_args_list, [
-                mock.call((), (), 2, mock.ANY),
+                mock.call((), (), 3, mock.ANY),
             ])
 
         # depth 1
+        # Expected quota = ceil((1 * 2) * 1.5 / 2) = 2
         candidates = [
             (0, 100.0, (), ()),
             (1, 100.0, ('丁複方',), (1.0,)),
@@ -832,15 +835,43 @@ class TestBeamFormulaSearcher(unittest.TestCase):
             self.assertEqual(items, [
                 (0, 100.0, (), ()),
                 (1, 100.0, ('丁複方',), (1.0,)),
+                (1, 100.0, ('丙複方',), (1.0,)),
                 (2, 100.0, ('丁複方', '丙複方'), (1.0, 1.0)),
                 (2, 100.0, ('丁複方', '乙複方'), (1.0, 1.0)),
-                (1, 100.0, ('丙複方',), (1.0,)),
                 (2, 100.0, ('丙複方', '丁複方'), (1.0, 1.0)),
                 (2, 100.0, ('丙複方', '乙複方'), (1.0, 1.0)),
             ])
             self.assertListEqual(m_heur.call_args_list, [
                 mock.call(('丁複方',), (1.0,), 2, mock.ANY),
                 mock.call(('丙複方',), (1.0,), 2, mock.ANY),
+            ])
+
+    def test_generate_combinations_at_depth_pool_size_redistribute(self):
+        """Should redistribute pool_size among items if they are less than beam_width."""
+        database, target_composition = self._sample_data()
+        searcher = _searcher.BeamFormulaSearcher(database)
+        searcher._set_context(target_composition, top_n=1,
+                              beam_width_factor=2, beam_multiplier=1.5)
+
+        # depth 1
+        # Expected quota = ceil((1 * 2) * 1.5 / 1) = 3
+        candidates = [
+            (0, 100.0, (), ()),
+            (1, 100.0, ('丁複方',), (1.0,)),
+        ]
+        with mock.patch.object(searcher, 'evaluate_combination', side_effect=self._se_eval), \
+             mock.patch.object(searcher, 'generate_heuristic_candidates',
+                               wraps=searcher.generate_heuristic_candidates) as m_heur:
+            combos = list(searcher.generate_combinations_at_depth(1, candidates))
+            self.assertEqual(combos, [
+                (0, 100.0, (), ()),
+                (1, 100.0, ('丁複方',), (1.0,)),
+                (2, 100.0, ('丁複方', '丙複方'), (1.0, 1.0)),
+                (2, 100.0, ('丁複方', '乙複方'), (1.0, 1.0)),
+                (2, 100.0, ('丁複方', '甲複方'), (1.0, 1.0)),
+            ])
+            self.assertListEqual(m_heur.call_args_list, [
+                mock.call(('丁複方',), (1.0,), 3, mock.ANY),
             ])
 
     def test_generate_combinations_at_depth_pool_size_zero(self):
@@ -878,10 +909,10 @@ class TestBeamFormulaSearcher(unittest.TestCase):
             self.assertEqual(items, [
                 (0, 100.0, (), ()),
                 (1, 100.0, ('甲複方',), (1.0,)),
+                (1, 100.0, ('乙複方',), (1.0,)),
                 (2, 100.0, ('甲複方', '乙複方'), (1.0, 1.0)),
                 (2, 100.0, ('甲複方', '丙複方'), (1.0, 1.0)),
                 (2, 100.0, ('甲複方', '丁複方'), (1.0, 1.0)),
-                (1, 100.0, ('乙複方',), (1.0,)),
                 (2, 100.0, ('乙複方', '甲複方'), (1.0, 1.0)),
                 (2, 100.0, ('乙複方', '丙複方'), (1.0, 1.0)),
                 (2, 100.0, ('乙複方', '丁複方'), (1.0, 1.0)),
@@ -1062,18 +1093,18 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         self.assertAlmostEqual(searcher._calculate_formula_score('丙複方', remaining_map), 0.560, places=3)
 
         # check for expected order by scores
-        # should limit generated item number within `pool_size`
+        # should limit generated item number within `quota`
         gen = ('甲複方', '乙複方', '丙複方')
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=1, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=1, gen=gen)),
             ['丙複方'],
         )
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=2, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=2, gen=gen)),
             ['丙複方', '甲複方'],
         )
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=3, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=3, gen=gen)),
             ['丙複方', '甲複方', '乙複方'],
         )
 
@@ -1105,18 +1136,18 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         self.assertAlmostEqual(searcher._calculate_formula_score('丙複方', remaining_map), 0.333, places=3)
 
         # check for expected order by scores
-        # should limit generated item number within `pool_size`
+        # should limit generated item number within `quota`
         gen = ('甲複方', '乙複方', '丙複方')
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=1, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=1, gen=gen)),
             ['甲複方'],
         )
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=2, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=2, gen=gen)),
             ['甲複方', '丙複方'],
         )
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=3, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=3, gen=gen)),
             ['甲複方', '丙複方', '乙複方'],
         )
 
@@ -1146,14 +1177,14 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         self.assertAlmostEqual(searcher._calculate_formula_score('丙複方', remaining_map), 0.333, places=3)
 
         # check for expected order by scores
-        # should limit generated item number within `pool_size`
+        # should limit generated item number within `quota`
         gen = ('乙複方', '丙複方')
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=1, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=1, gen=gen)),
             ['乙複方'],
         )
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=2, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=2, gen=gen)),
             ['乙複方', '丙複方'],
         )
 
@@ -1179,13 +1210,13 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         self.assertAlmostEqual(searcher._calculate_formula_score('丙複方', remaining_map), 0.0, places=3)
 
         # check for expected order by scores
-        # should limit generated item number within `pool_size`
+        # should limit generated item number within `quota`
         gen = ('乙複方', '丙複方')
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=1, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=1, gen=gen)),
             ['乙複方'],
         )
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=2, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=2, gen=gen)),
             ['乙複方', '丙複方'],
         )
