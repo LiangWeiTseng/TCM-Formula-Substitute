@@ -334,6 +334,17 @@ class BeamFormulaSearcher(FormulaSearcher):
         self.beam_width = max(ceil(beam_width_factor * top_n), 1)
         self.beam_multiplier = beam_multiplier
 
+    def find_matches(self):
+        for match_pct, combo, dosages in self.generate_combinations():
+            for extended_combo in self.generate_combinations_for_sformulas(combo, dosages):
+                if extended_combo != combo:
+                    try:
+                        extended_combo, dosages, match_pct = self.evaluate_combination(extended_combo)
+                    except ValueError as exc:
+                        log.debug('略過錯誤項目: %s', extended_combo, exc)
+                        continue
+                yield match_pct, extended_combo, dosages
+
     def generate_combinations(self):
         candidates = [(0, 100.0, (), ())]
         for depth in range(self.max_cformulas):
@@ -347,8 +358,8 @@ class BeamFormulaSearcher(FormulaSearcher):
             else:
                 candidates = self.generate_unique_combinations_at_depth(depth, candidates)
 
-        for _, _, combo, _ in candidates:
-            yield combo
+        for _, match_pct, combo, dosages in candidates:
+            yield match_pct, combo, dosages
 
     def generate_unique_combinations_at_depth(self, depth, candidates):
         combos = set()

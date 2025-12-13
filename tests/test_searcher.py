@@ -535,8 +535,8 @@ class TestBeamFormulaSearcher(unittest.TestCase):
              mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur), \
              mock.patch.object(searcher, 'generate_unique_combinations_at_depth',
                                wraps=searcher.generate_unique_combinations_at_depth) as m_gen:
-            combos = list(searcher.generate_combinations())
-            self.assertEqual(combos, [()])
+            items = list(searcher.generate_combinations())
+            self.assertEqual(items, [(100.0, (), ())])
             self.assertListEqual(m_gen.call_args_list, [])
 
         # depth 1
@@ -546,13 +546,13 @@ class TestBeamFormulaSearcher(unittest.TestCase):
              mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur), \
              mock.patch.object(searcher, 'generate_unique_combinations_at_depth',
                                wraps=searcher.generate_unique_combinations_at_depth) as m_gen:
-            combos = list(searcher.generate_combinations())
-            self.assertEqual(combos, [
-                (),
-                ('甲複方',),
-                ('乙複方',),
-                ('丙複方',),
-                ('丁複方',),
+            items = list(searcher.generate_combinations())
+            self.assertEqual(items, [
+                (100.0, (), ()),
+                (100.0, ('甲複方',), (1.0,)),
+                (100.0, ('乙複方',), (1.0,)),
+                (100.0, ('丙複方',), (1.0,)),
+                (100.0, ('丁複方',), (1.0,)),
             ])
             self.assertListEqual(m_gen.call_args_list, [
                 mock.call(0, [
@@ -569,19 +569,19 @@ class TestBeamFormulaSearcher(unittest.TestCase):
              mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur), \
              mock.patch.object(searcher, 'generate_unique_combinations_at_depth',
                                wraps=searcher.generate_unique_combinations_at_depth) as m_gen:
-            combos = list(searcher.generate_combinations())
-            self.assertEqual(combos, [
-                (),
-                ('甲複方',),
-                ('乙複方',),
-                ('丙複方',),
-                ('丁複方',),
-                ('甲複方', '乙複方'),
-                ('甲複方', '丙複方'),
-                ('甲複方', '丁複方'),
-                ('乙複方', '丙複方'),
-                ('乙複方', '丁複方'),
-                ('丙複方', '丁複方'),
+            items = list(searcher.generate_combinations())
+            self.assertEqual(items, [
+                (100.0, (), ()),
+                (100.0, ('甲複方',), (1.0,)),
+                (100.0, ('乙複方',), (1.0,)),
+                (100.0, ('丙複方',), (1.0,)),
+                (100.0, ('丁複方',), (1.0,)),
+                (100.0, ('甲複方', '乙複方'), (1.0, 1.0)),
+                (100.0, ('甲複方', '丙複方'), (1.0, 1.0)),
+                (100.0, ('甲複方', '丁複方'), (1.0, 1.0)),
+                (100.0, ('乙複方', '丙複方'), (1.0, 1.0)),
+                (100.0, ('乙複方', '丁複方'), (1.0, 1.0)),
+                (100.0, ('丙複方', '丁複方'), (1.0, 1.0)),
             ])
             self.assertListEqual(m_gen.call_args_list, [
                 mock.call(0, [
@@ -603,23 +603,23 @@ class TestBeamFormulaSearcher(unittest.TestCase):
              mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur), \
              mock.patch.object(searcher, 'generate_unique_combinations_at_depth',
                                wraps=searcher.generate_unique_combinations_at_depth) as m_gen:
-            combos = list(searcher.generate_combinations())
-            self.assertEqual(combos, [
-                (),
-                ('甲複方',),
-                ('乙複方',),
-                ('丙複方',),
-                ('丁複方',),
-                ('甲複方', '乙複方'),
-                ('甲複方', '丙複方'),
-                ('甲複方', '丁複方'),
-                ('乙複方', '丙複方'),
-                ('乙複方', '丁複方'),
-                ('丙複方', '丁複方'),
-                ('甲複方', '乙複方', '丙複方'),
-                ('甲複方', '乙複方', '丁複方'),
-                ('甲複方', '丙複方', '丁複方'),
-                ('乙複方', '丙複方', '丁複方'),
+            items = list(searcher.generate_combinations())
+            self.assertEqual(items, [
+                (100.0, (), ()),
+                (100.0, ('甲複方',), (1.0,)),
+                (100.0, ('乙複方',), (1.0,)),
+                (100.0, ('丙複方',), (1.0,)),
+                (100.0, ('丁複方',), (1.0,)),
+                (100.0, ('甲複方', '乙複方'), (1.0, 1.0)),
+                (100.0, ('甲複方', '丙複方'), (1.0, 1.0)),
+                (100.0, ('甲複方', '丁複方'), (1.0, 1.0)),
+                (100.0, ('乙複方', '丙複方'), (1.0, 1.0)),
+                (100.0, ('乙複方', '丁複方'), (1.0, 1.0)),
+                (100.0, ('丙複方', '丁複方'), (1.0, 1.0)),
+                (100.0, ('甲複方', '乙複方', '丙複方'), (1.0, 1.0, 1.0)),
+                (100.0, ('甲複方', '乙複方', '丁複方'), (1.0, 1.0, 1.0)),
+                (100.0, ('甲複方', '丙複方', '丁複方'), (1.0, 1.0, 1.0)),
+                (100.0, ('乙複方', '丙複方', '丁複方'), (1.0, 1.0, 1.0)),
             ])
             self.assertListEqual(m_gen.call_args_list, [
                 mock.call(0, [
@@ -661,14 +661,14 @@ class TestBeamFormulaSearcher(unittest.TestCase):
              mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur), \
              mock.patch.object(searcher, 'generate_unique_combinations_at_depth',
                                wraps=searcher.generate_unique_combinations_at_depth) as m_gen:
-            combos = list(searcher.generate_combinations())
-            self.assertEqual(combos, [
-                (),
-                ('甲複方', '乙複方'),
-                ('甲複方', '丙複方'),
-                ('甲複方', '乙複方', '丙複方'),
-                ('甲複方', '乙複方', '丁複方'),
-                ('甲複方', '丙複方', '丁複方'),
+            items = list(searcher.generate_combinations())
+            self.assertEqual(items, [
+                (100.0, (), ()),
+                (70.0, ('甲複方', '乙複方'), (1.0, 1.0)),
+                (70.0, ('甲複方', '丙複方'), (1.0, 1.0)),
+                (80.0, ('甲複方', '乙複方', '丙複方'), (1.0, 1.0, 1.0)),
+                (80.0, ('甲複方', '乙複方', '丁複方'), (1.0, 1.0, 1.0)),
+                (80.0, ('甲複方', '丙複方', '丁複方'), (1.0, 1.0, 1.0)),
             ])
             self.assertListEqual(m_gen.call_args_list, [
                 mock.call(0, [
