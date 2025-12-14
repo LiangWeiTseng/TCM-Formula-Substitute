@@ -420,6 +420,9 @@ class BeamFormulaSearcher(FormulaSearcher):
     def generate_heuristic_candidates(self, combo, dosages, quota):
         remaining_map = self._calculate_remaining_map(combo, dosages)
         log.debug('剩餘組成比: %s', remaining_map)
+        if not remaining_map:
+            log.debug('略過擴展: %s', combo)
+            return
 
         candidate_formulas = heapq.nlargest(
             quota,

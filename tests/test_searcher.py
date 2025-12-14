@@ -1202,17 +1202,8 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         remaining_map = {}
         self.assertEqual(searcher._calculate_remaining_map(combo, dosages), remaining_map)
 
-        # check for expected scores
-        self.assertAlmostEqual(searcher._calculate_formula_score('乙複方', remaining_map), 0.0, places=3)
-        self.assertAlmostEqual(searcher._calculate_formula_score('丙複方', remaining_map), 0.0, places=3)
-
-        # check for expected order by scores
-        # should limit generated item number within `quota`
+        # skip generating if remaining_map is empty
         self.assertEqual(
             list(searcher.generate_heuristic_candidates(combo, dosages, quota=1)),
-            ['乙複方'],
-        )
-        self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, quota=2)),
-            ['乙複方', '丙複方'],
+            [],
         )
