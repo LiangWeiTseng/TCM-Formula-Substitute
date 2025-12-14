@@ -518,8 +518,10 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         return combo, (1.0,) * len(combo), 100.0
 
     @staticmethod
-    def _se_heur(_combo, _dosages, _quota, gen):
-        return gen
+    def _se_heur(self):
+        def wrapped(combo, *args, **kwargs):
+            return self.generate_ramaining_candidates(combo)
+        return wrapped
 
     def test_generate_combinations_max_depth(self):
         """Should generate items through `generate_unique_combinations_at_depth` depth by depth."""
@@ -530,7 +532,7 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         searcher._set_context(target_composition, max_cformulas=0, top_n=1,
                               beam_width_factor=1000, beam_multiplier=1)
         with mock.patch.object(searcher, 'evaluate_combination', side_effect=self._se_eval), \
-             mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur), \
+             mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur(searcher)), \
              mock.patch.object(searcher, 'generate_unique_combinations_at_depth',
                                wraps=searcher.generate_unique_combinations_at_depth) as m_gen:
             items = list(searcher.generate_combinations())
@@ -541,7 +543,7 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         searcher._set_context(target_composition, max_cformulas=1, top_n=1,
                               beam_width_factor=1000, beam_multiplier=1)
         with mock.patch.object(searcher, 'evaluate_combination', side_effect=self._se_eval), \
-             mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur), \
+             mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur(searcher)), \
              mock.patch.object(searcher, 'generate_unique_combinations_at_depth',
                                wraps=searcher.generate_unique_combinations_at_depth) as m_gen:
             items = list(searcher.generate_combinations())
@@ -564,7 +566,7 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         searcher._set_context(target_composition, max_cformulas=2, top_n=1,
                               beam_width_factor=1000, beam_multiplier=1)
         with mock.patch.object(searcher, 'evaluate_combination', side_effect=self._se_eval), \
-             mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur), \
+             mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur(searcher)), \
              mock.patch.object(searcher, 'generate_unique_combinations_at_depth',
                                wraps=searcher.generate_unique_combinations_at_depth) as m_gen:
             items = list(searcher.generate_combinations())
@@ -598,7 +600,7 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         searcher._set_context(target_composition, max_cformulas=3, top_n=1,
                               beam_width_factor=1000, beam_multiplier=1)
         with mock.patch.object(searcher, 'evaluate_combination', side_effect=self._se_eval), \
-             mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur), \
+             mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur(searcher)), \
              mock.patch.object(searcher, 'generate_unique_combinations_at_depth',
                                wraps=searcher.generate_unique_combinations_at_depth) as m_gen:
             items = list(searcher.generate_combinations())
@@ -656,7 +658,7 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         searcher._set_context(target_composition, max_cformulas=3, top_n=1,
                               beam_width_factor=3, beam_multiplier=10)
         with mock.patch.object(searcher, 'evaluate_combination', side_effect=se_eval), \
-             mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur), \
+             mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur(searcher)), \
              mock.patch.object(searcher, 'generate_unique_combinations_at_depth',
                                wraps=searcher.generate_unique_combinations_at_depth) as m_gen:
             items = list(searcher.generate_combinations())
@@ -816,7 +818,7 @@ class TestBeamFormulaSearcher(unittest.TestCase):
                 (1, 100.0, ('乙複方',), (1.0,)),
             ])
             self.assertListEqual(m_heur.call_args_list, [
-                mock.call((), (), 3, mock.ANY),
+                mock.call((), (), 3),
             ])
 
         # depth 1
@@ -840,8 +842,8 @@ class TestBeamFormulaSearcher(unittest.TestCase):
                 (2, 100.0, ('丙複方', '乙複方'), (1.0, 1.0)),
             ])
             self.assertListEqual(m_heur.call_args_list, [
-                mock.call(('丁複方',), (1.0,), 2, mock.ANY),
-                mock.call(('丙複方',), (1.0,), 2, mock.ANY),
+                mock.call(('丁複方',), (1.0,), 2),
+                mock.call(('丙複方',), (1.0,), 2),
             ])
 
     def test_generate_combinations_at_depth_pool_size_redistribute(self):
@@ -869,7 +871,7 @@ class TestBeamFormulaSearcher(unittest.TestCase):
                 (2, 100.0, ('丁複方', '甲複方'), (1.0, 1.0)),
             ])
             self.assertListEqual(m_heur.call_args_list, [
-                mock.call(('丁複方',), (1.0,), 3, mock.ANY),
+                mock.call(('丁複方',), (1.0,), 3),
             ])
 
     def test_generate_combinations_at_depth_pool_size_zero(self):
@@ -1092,17 +1094,16 @@ class TestBeamFormulaSearcher(unittest.TestCase):
 
         # check for expected order by scores
         # should limit generated item number within `quota`
-        gen = ('甲複方', '乙複方', '丙複方')
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, quota=1, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=1)),
             ['丙複方'],
         )
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, quota=2, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=2)),
             ['丙複方', '甲複方'],
         )
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, quota=3, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=3)),
             ['丙複方', '甲複方', '乙複方'],
         )
 
@@ -1135,17 +1136,16 @@ class TestBeamFormulaSearcher(unittest.TestCase):
 
         # check for expected order by scores
         # should limit generated item number within `quota`
-        gen = ('甲複方', '乙複方', '丙複方')
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, quota=1, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=1)),
             ['甲複方'],
         )
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, quota=2, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=2)),
             ['甲複方', '丙複方'],
         )
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, quota=3, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=3)),
             ['甲複方', '丙複方', '乙複方'],
         )
 
@@ -1176,13 +1176,12 @@ class TestBeamFormulaSearcher(unittest.TestCase):
 
         # check for expected order by scores
         # should limit generated item number within `quota`
-        gen = ('乙複方', '丙複方')
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, quota=1, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=1)),
             ['乙複方'],
         )
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, quota=2, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=2)),
             ['乙複方', '丙複方'],
         )
 
@@ -1209,12 +1208,11 @@ class TestBeamFormulaSearcher(unittest.TestCase):
 
         # check for expected order by scores
         # should limit generated item number within `quota`
-        gen = ('乙複方', '丙複方')
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, quota=1, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=1)),
             ['乙複方'],
         )
         self.assertEqual(
-            list(searcher.generate_heuristic_candidates(combo, dosages, quota=2, gen=gen)),
+            list(searcher.generate_heuristic_candidates(combo, dosages, quota=2)),
             ['乙複方', '丙複方'],
         )

@@ -395,10 +395,10 @@ class BeamFormulaSearcher(FormulaSearcher):
             quota = ceil(self.beam_width * self.beam_multiplier / len(next_candidates))
 
         for _, _, combo, dosages in next_candidates:
-            combo_set = set(combo)
-            gen = (f for f in self.cformulas if f not in combo_set)
             if self.beam_multiplier > 0:
-                gen = self.generate_heuristic_candidates(combo, dosages, quota, gen)
+                gen = self.generate_heuristic_candidates(combo, dosages, quota)
+            else:
+                gen = self.generate_ramaining_candidates(combo)
 
             _new_dosages = np.append(dosages, (1.0,))
             for formula in gen:
@@ -413,13 +413,17 @@ class BeamFormulaSearcher(FormulaSearcher):
                 new_item = depth + 1, match_pct, new_combo, new_dosages
                 yield new_item
 
-    def generate_heuristic_candidates(self, combo, dosages, quota, gen):
+    def generate_ramaining_candidates(self, combo):
+        combo_set = set(combo)
+        return (f for f in self.cformulas if f not in combo_set)
+
+    def generate_heuristic_candidates(self, combo, dosages, quota):
         remaining_map = self._calculate_remaining_map(combo, dosages)
         log.debug('剩餘組成比: %s', remaining_map)
 
         candidate_formulas = heapq.nlargest(
             quota,
-            gen,
+            self.generate_ramaining_candidates(combo),
             key=lambda f: self._calculate_formula_score(f, remaining_map),
         )
 
