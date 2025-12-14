@@ -442,11 +442,9 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
         searcher._set_context(target_composition, places=1)
         new_combo, new_dosages, match_pct = searcher.evaluate_combination(combo)
 
-        # @TODO: match_pct is actually calculated using the original dosages
-        # (i.e. 0.06 in this case)
         self.assertEqual(new_combo, ('甲複方',))
         np.testing.assert_allclose(new_dosages, [0.1], atol=1e-1)
-        self.assertAlmostEqual(match_pct, 98.35, places=2)
+        self.assertAlmostEqual(match_pct, 33.33, places=2)
 
     def test_evaluate_combination_fix_zero(self):
         """Should strip zero-dose formulas from the returned combo and dosages."""
@@ -483,7 +481,7 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
         self.assertEqual(len(best_matches), 2)
 
         match_pct, combo, dosages = best_matches[0]
-        self.assertAlmostEqual(match_pct, 99.99905054425756, places=3)
+        self.assertAlmostEqual(match_pct, 100.0, places=3)
         self.assertEqual(combo, ('桂枝湯',))
         np.testing.assert_allclose(dosages, [2], atol=1e-3)
 

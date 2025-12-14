@@ -259,6 +259,10 @@ class FormulaSearcher(ABC):
 
     def _calculate_match(self, combo, target_composition=None, **opts):
         dosages, delta = self.find_best_dosages(combo, target_composition, **opts)
+        _dosages = np.round(dosages, self.places)
+        if not np.array_equal(_dosages, dosages):
+            dosages = _dosages
+            delta = self.calculate_delta(dosages, combo, target_composition)
         variance = (None if target_composition is None
                     else self.calculate_variance(target_composition))
         match_pct = self.calculate_match_ratio(delta, variance) * 100
@@ -267,7 +271,6 @@ class FormulaSearcher(ABC):
     def evaluate_combination(self, combo, *, initial_guess=None):
         # raise ValueError if unable to find minimal dosages
         dosages, delta, match_pct = self.calculate_match(combo, initial_guess=initial_guess)
-        dosages = np.round(dosages, self.places)
         log.debug('估值: %s %s: %.3f (%.2f%%)', combo, dosages, delta, match_pct)
 
         # remove formulas with 0 dosage
@@ -283,7 +286,6 @@ class FormulaSearcher(ABC):
             fixed_combo = tuple(np.array(fixed_combo, dtype=object)[non_zero_mask])
             fixed_dosages = fixed_dosages[non_zero_mask]
             fixed_dosages, delta, match_pct = self.calculate_match(fixed_combo, initial_guess=fixed_dosages)
-            fixed_dosages = np.round(fixed_dosages, self.places)
 
         log.debug('校正: %s %s: %.3f (%.2f%%)', fixed_combo, np.round(fixed_dosages, self.places), delta, match_pct)
 
