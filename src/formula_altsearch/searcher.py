@@ -471,6 +471,8 @@ class BeamFormulaSearcher(FormulaSearcher):
             sum_b_sq = 0.0
             for herb in herbs:
                 a = composition.get(herb, 0.0) / total
+                if herb not in self.target_composition:
+                    a *= self.penalty_factor
                 b = remaining_map.get(herb, 0.0)
                 sum_ab += a * b
                 sum_a_sq += a ** 2.0

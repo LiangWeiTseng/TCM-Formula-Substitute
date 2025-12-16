@@ -920,9 +920,9 @@ class TestBeamFormulaSearcher(unittest.TestCase):
             m_heur.assert_not_called()
 
     def _check_heuristic_scoring(self, database, target_composition, combo, dosages,
-                                 remaining_map, expected_scores):
+                                 remaining_map, expected_scores, penalty_factor=1):
         searcher = _searcher.BeamFormulaSearcher(database)
-        searcher._set_context(target_composition)
+        searcher._set_context(target_composition, penalty_factor=penalty_factor)
 
         self.assertEqual(searcher._calculate_remaining_map(combo, dosages), remaining_map)
 
@@ -1064,6 +1064,17 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         expected_scores = {'甲複方': 0.0}
         self._check_heuristic_scoring(database, target_composition, combo, dosages,
                                       remaining_map, expected_scores)
+
+    def test_generate_heuristic_candidates_scoring_with_penalty(self):
+        combo = ()
+        dosages = ()
+
+        database = {'甲複方': {'甲藥': 1.0, '乙藥': 1.0}}
+        target_composition = {'甲藥': 1.0}
+        remaining_map = {'甲藥': 1.0}
+        expected_scores = {'甲複方': 0.447}
+        self._check_heuristic_scoring(database, target_composition, combo, dosages,
+                                      remaining_map, expected_scores, penalty_factor=2.0)
 
     def test_generate_heuristic_candidates_single_main_herb(self):
         database = {
