@@ -35,6 +35,11 @@ dependencies = [
     "wcwidth>=0.1.6",
 ]
 
+[project.optional-dependencies]
+gui = [
+    "gradio>=6.0",
+]
+
 [project.urls]
 Homepage = "https://github.com/LiangWeiTseng/TCM"
 

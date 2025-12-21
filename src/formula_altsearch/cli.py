@@ -160,8 +160,11 @@ def search(database, composition, excludes=None, raw=False, **opts):
     yield ''
 
     yield f'品項總數: {len(database.keys())}'
-    yield ''
 
+    # None as flush signal
+    yield None
+
+    yield ''
     start = time.time()
     best_matches = searcher.find_best_matches(database, target_composition, excludes=excludes, **opts)
     elapsed = time.time() - start
@@ -216,7 +219,8 @@ def cmd_search(args):
                  beam_width_factor=args.beam_width_factor, beam_multiplier=args.beam_multiplier)
 
     for msg in gen:
-        print(msg)
+        if msg is not None:
+            print(msg)
 
 
 def cmd_list(args):
@@ -240,6 +244,11 @@ def cmd_list(args):
     else:
         for name in names:
             print(name)
+
+
+def cmd_gui(args):
+    from . import gui
+    gui.main(share=args.share, inbrowser=args.inbrowser)
 
 
 def cmd_convert(args):
@@ -381,6 +390,22 @@ def parse_args(argv=None):
     parser_list.add_argument(
         '-d', '--database', metavar='FILE', default=searcher.DEFAULT_DATAFILE, action='store',
         help="""使用自訂的資料庫檔案 (預設: %(default)s)""",
+    )
+
+    parser_gui = subparsers.add_parser(
+        'gui', aliases=['g'],
+        formatter_class=CJKRawDescriptionHelpFormatter,
+        help="""開啟圖形操作介面""",
+        description="""啟動本地伺服器，並在瀏覽器開啟圖形操作介面。""",
+    )
+    parser_gui.set_defaults(func=cmd_gui)
+    parser_gui.add_argument(
+        '-s', '--share', action='store_true',
+        help="""允許他人透過公開的 https://*.gradio.live/ 網址存取圖形介面""",
+    )
+    parser_gui.add_argument(
+        '--no-browse', dest='inbrowser', action='store_false',
+        help="""不要自動在瀏覽器開啟圖形介面""",
     )
 
     parser_convert = subparsers.add_parser(

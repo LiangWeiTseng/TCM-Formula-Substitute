@@ -8,14 +8,19 @@
 
 2. 下載套件原始檔後於該目錄下執行：
    ```
-   pip install .
+   pip install .[gui]
    ```
+
+   > 若不使用圖形介面，可改用精簡安裝： `pip install .`
 
 ## 操作
 
 ```
 # 查看說明文件
 fas -h
+
+# 啟動本地伺服器，並在瀏覽器開啟圖形操作介面
+fas g
 
 # 查看 s (search) 子命令的說明文件
 fas s -h
@@ -83,7 +88,7 @@ python -m venv .venv
 source .venv/bin/activate
 
 # 安裝套件為編輯模式
-pip install -e .
+pip install -e .[gui]
 
 # 安裝開發相關套件
 pip install --group dev
