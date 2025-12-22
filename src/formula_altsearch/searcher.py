@@ -3,6 +3,7 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from contextlib import nullcontext
+from functools import cached_property
 from itertools import combinations
 from math import ceil, sqrt
 
@@ -16,38 +17,6 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
 undefined = object()
-
-
-def load_formula_database(file):
-    try:
-        # file is a path-like object
-        _fh = open(file, 'r', encoding='utf-8')
-    except TypeError:
-        # file is a file-like object
-        _fh = nullcontext(file)
-
-    with _fh as fh:
-        data = yaml.safe_load(fh)
-
-    return _load_formula_database(data)
-
-
-def _load_formula_database(data):
-    rv = {}
-
-    for _item in data:
-        name = _item['name']
-        key = _item['key']
-        if key in rv:
-            log.warning('%s 使用了重複的索引值 %s，將被忽略', repr(name), repr(key), )
-            continue
-
-        unit_dosage = _item.get('unit_dosage', 1)
-        item = rv[key] = {}
-        for herb, amount in _item['composition'].items():
-            item[herb] = amount / unit_dosage
-
-    return rv
 
 
 def find_best_matches(database, target_composition, top_n=None, algorithm='beam', **opts):
@@ -64,6 +33,70 @@ def find_best_matches(database, target_composition, top_n=None, algorithm='beam'
         return searcher.find_best_matches(top_n, target_composition, **opts)
     else:
         raise ValueError(f'未支援此演算法: {algorithm}')
+
+
+class FormulaDatabase(dict):
+    @classmethod
+    def from_file(cls, file):
+        try:
+            # file is a path-like object
+            _fh = open(file, 'r', encoding='utf-8')
+        except TypeError:
+            # file is a file-like object
+            _fh = nullcontext(file)
+
+        with _fh as fh:
+            data = yaml.safe_load(fh)
+
+        return cls.from_dict(data)
+
+    @classmethod
+    def from_dict(cls, data):
+        rv = {}
+
+        for _item in data:
+            name = _item['name']
+            key = _item['key']
+            if key in rv:
+                log.warning('%s 使用了重複的索引值 %s，將被忽略', repr(name), repr(key), )
+                continue
+
+            unit_dosage = _item.get('unit_dosage', 1)
+            item = rv[key] = {}
+            for herb, amount in _item['composition'].items():
+                item[herb] = amount / unit_dosage
+
+        return cls(rv)
+
+    @cached_property
+    def cformulas(self):
+        self._compute_formulas()
+        return self.__dict__['cformulas']
+
+    @cached_property
+    def sformulas(self):
+        self._compute_formulas()
+        return self.__dict__['sformulas']
+
+    @cached_property
+    def herbs(self):
+        self._compute_formulas()
+        return self.__dict__['herbs']
+
+    def _compute_formulas(self):
+        cformulas = {}
+        sformulas = {}
+        herbs = {}
+        for formula, comp in self.items():
+            if len(comp) > 1:
+                cformulas[formula] = None
+            else:
+                sformulas[formula] = None
+            for herb in comp:
+                herbs[herb] = None
+        self.__dict__['cformulas'] = cformulas
+        self.__dict__['sformulas'] = sformulas
+        self.__dict__['herbs'] = herbs
 
 
 class FormulaSearcher(ABC):

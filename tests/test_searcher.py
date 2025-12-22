@@ -9,8 +9,16 @@ from formula_altsearch import searcher as _searcher
 
 
 class TestUtilities(unittest.TestCase):
-    def test_load_formula_database(self):
-        database = _searcher.load_formula_database(StringIO(dedent(
+    @mock.patch.object(_searcher, 'BeamFormulaSearcher')
+    def test_find_best_matches(self, m_cls):
+        _searcher.find_best_matches({}, {}, excludes=None, penalty_factor=2.0)
+        m_cls.assert_called_with({})
+        m_cls().find_best_matches.assert_called_with(None, {}, excludes=None, penalty_factor=2.0)
+
+
+class TestFormulaDatabase(unittest.TestCase):
+    def test_from_file(self):
+        database = _searcher.FormulaDatabase.from_file(StringIO(dedent(
             """\
             - name: “張三”芍藥甘草湯濃縮細粒
               key: 芍藥甘草湯
@@ -29,8 +37,8 @@ class TestUtilities(unittest.TestCase):
             },
         })
 
-    def test_load_formula_database_no_unit_dosage(self):
-        database = _searcher.load_formula_database(StringIO(dedent(
+    def test_from_file_no_unit_dosage(self):
+        database = _searcher.FormulaDatabase.from_file(StringIO(dedent(
             """\
             - name: “張三”芍藥甘草湯濃縮細粒
               key: 芍藥甘草湯
@@ -49,9 +57,9 @@ class TestUtilities(unittest.TestCase):
         })
 
     @mock.patch.object(_searcher, 'log')
-    def test_load_formula_database_duplicated_key(self, m_log):
+    def test_from_file_duplicated_key(self, m_log):
         """Should ignore an item with a duplicated key."""
-        database = _searcher.load_formula_database(StringIO(dedent(
+        database = _searcher.FormulaDatabase.from_file(StringIO(dedent(
             """\
             - name: “張三”芍藥甘草湯濃縮細粒
               key: 芍藥甘草湯
@@ -77,12 +85,6 @@ class TestUtilities(unittest.TestCase):
                 '白芍': 1.3333333333333333,
             },
         })
-
-    @mock.patch.object(_searcher, 'BeamFormulaSearcher')
-    def test_find_best_matches(self, m_cls):
-        _searcher.find_best_matches({}, {}, excludes=None, penalty_factor=2.0)
-        m_cls.assert_called_with({})
-        m_cls().find_best_matches.assert_called_with(None, {}, excludes=None, penalty_factor=2.0)
 
 
 class TestExhaustiveFormulaSearcher(unittest.TestCase):

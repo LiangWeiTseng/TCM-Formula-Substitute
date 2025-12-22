@@ -174,20 +174,10 @@ def search(database, target_composition, input_composition=None, **options):
 def cmd_search(args):
     searcher.log.setLevel(args.verbosity)
     try:
-        database = searcher.load_formula_database(args.database)
+        database = searcher.FormulaDatabase.from_file(args.database)
     except OSError:
         print(f'無法載入資料庫檔案: {args.database}')
         return
-
-    all_herbs = set()
-    all_sformulas = set()
-    all_cformulas = set()
-    for name, data in database.items():
-        if len(data) > 1:
-            all_cformulas.add(name)
-        else:
-            all_sformulas.add(name)
-        all_herbs |= data.keys()
 
     target_composition = {}
     excludes = set(args.excludes)
@@ -195,7 +185,7 @@ def cmd_search(args):
     if args.raw:
         unknowns = {}
         for herb, amount in args.items:
-            if herb in all_herbs:
+            if herb in database.herbs:
                 target_composition[herb] = target_composition.get(herb, 0) + amount
             else:
                 unknowns[herb] = None
@@ -206,8 +196,8 @@ def cmd_search(args):
     else:
         unknowns = {}
         for item, dosage in args.items:
-            if item in all_cformulas or item in all_sformulas:
-                if item in all_cformulas:
+            if item in database:
+                if item in database.cformulas:
                     excludes.add(item)
                 adjusted = {herb: dosage * amount for herb, amount in database[item].items()}
                 for herb, amount in adjusted.items():
@@ -230,7 +220,7 @@ def cmd_search(args):
 def cmd_list(args):
     searcher.log.setLevel(args.verbosity)
     try:
-        database = searcher.load_formula_database(args.database)
+        database = searcher.FormulaDatabase.from_file(args.database)
     except OSError:
         print(f'無法載入資料庫檔案: {args.database}')
         return
