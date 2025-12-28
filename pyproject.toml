@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=77.0.3", "setuptools-scm>=8", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "formula_altsearch"
+description = "Search for alternatives of a TCM formula."
+readme = "README.md"
+requires-python = "~=3.9"
+license = "MIT"
+
+dynamic = [
+    "version",
+]
+
+authors = [
+    {name = "LiangWeiTseng", email = "97822473+LiangWeiTseng@users.noreply.github.com"},
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+dependencies = [
+    "pyyaml>=5.1",
+    "scipy>=1.12",
+    "wcwidth>=0.1.6",
+]
+
+[project.optional-dependencies]
+gui = [
+    "gradio>=6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/LiangWeiTseng/TCM"
+
+[project.scripts]
+fas = "formula_altsearch.__main__:main"
+
+[dependency-groups]
+lint = [
+    "flake8>=6.1",
+    "Flake8-pyproject>=1.2.3",
+    "pep8-naming>=0.13.2",
+    "flake8-comprehensions>=3.8",
+    "flake8-string-format>=0.3",
+    "flake8-quotes>=3.4",
+    "flake8-bugbear>=22.6.22",
+    "flake8-isort>=5.0",
+    "isort>=5.9.2",
+]
+dev = [
+    {include-group = "lint"},
+]
+
+[tool.setuptools.dynamic.version]
+attr = "formula_altsearch.__version__"
+
+[tool.flake8]
+exclude = [
+    ".git",
+    ".venv",
+    "build",
+    "dist",
+]
+max-line-length = 160
+
+# Flake8 Rules
+# https://www.flake8rules.com/
+
+# W503: Line break occurred before a binary operator
+ignore = [
+    "W503",
+]
+
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
+
+# skip directories included by default
+# ref: https://pycqa.github.io/isort/docs/configuration/options.html
