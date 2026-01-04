@@ -8,7 +8,7 @@ jobs:
   sync-to-hub:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           lfs: true
@@ -17,6 +17,4 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # 強制將本地 main 分支推送到 HF 的 main 分支
-          # 注意：這裡要確保你的帳號與 Space 名稱正確
           git push --force https://adetectora:$HF_TOKEN@huggingface.co/spaces/adetectora/formula-altsearch main
