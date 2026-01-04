@@ -1,3 +1,14 @@
+---
+title: Formula Altsearch
+emoji: 🌿
+colorFrom: green
+colorTo: blue
+sdk: gradio
+sdk_version: 4.44.1
+app_file: app.py
+pinned: false
+license: mit
+---
 為了解決科中缺藥使用GPT和Python協助寫出來的小程式。來源是衛福部中藥許可證的順天堂公司科中，若有建議或想複製代碼自行修改運用的都歡迎，也可以自己新增dictionary來擴充方劑資料庫。
 
 致謝：曾建霖的python教學、呂易芩的討論與idea
