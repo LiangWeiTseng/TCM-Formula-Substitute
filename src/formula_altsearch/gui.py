@@ -135,7 +135,7 @@ def create_app():
             language=None,
             show_label=False,
             container=False,
-            line_numbers=False,
+            show_line_numbers=False,
             wrap_lines=True,
             lines=3,
             buttons=[],
