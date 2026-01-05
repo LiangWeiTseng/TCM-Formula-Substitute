@@ -130,7 +130,7 @@ def create_app():
                     btn_list_herbs = gr.Button('列出所有藥材')
 
             with gr.Column():
-output_txt = gr.Code(
+                output_txt = gr.Code(
             label='查詢結果',
             language=None,
             show_label=False,
