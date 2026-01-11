@@ -1,0 +1,101 @@
+name: Deploy to Hugging Face Hub
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment'
+        type: choice
+        options:
+          - development
+          - production
+        default: production
+  workflow_run:
+    workflows: [Run Tests]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'production' }}
+    steps:
+      - name: Define variables
+        run: |
+          echo "PY_VER=3.14" >> $GITHUB_ENV
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PY_VER }}
+
+      - name: Install dependencies
+        run: |
+          pip install pip-tools
+
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          lfs: true
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "github-actions@github.com"
+
+      - name: Generate files and commits
+        run: |
+          sha=$(git rev-parse HEAD)
+          git checkout --orphan "hf-$sha"
+          git reset --hard
+
+          # requirements.txt
+          # generate with fixed Python and package versions
+          git checkout $sha -- pyproject.toml
+          pip-compile pyproject.toml --extra gui --output-file requirements.txt
+          rm pyproject.toml
+
+          # README.md
+          # ref: https://huggingface.co/docs/hub/spaces-config-reference
+          cat >README.md <<'EOF'
+          ---
+          title: 缺藥救星
+          emoji: 🌿
+          colorFrom: green
+          colorTo: blue
+          python_version: ${{ env.PY_VER }}
+          sdk: gradio
+          sdk_version: 6.3.0
+          app_file: app.py
+          pinned: false
+          license: mit
+          ---
+          EOF
+
+          # app.py
+          cat >app.py <<'EOF'
+          import os
+          import sys
+
+          def main():
+              root = os.path.dirname(__file__)
+              sys.path.append(os.path.join(root, 'app', 'src'))
+
+              from formula_altsearch import gui
+              gui.main()
+
+          if __name__ == '__main__':
+              main()
+          EOF
+
+          git add .
+          git commit -m 'Init'
+          git subtree add --squash -P app . $sha
+
+      - name: Push to Hugging Face
+        env:
+          HF_USER: ${{ vars.HF_USER }}
+          HF_REPO: ${{ vars.HF_REPO }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git push --force https://$HF_USER:$HF_TOKEN@huggingface.co/spaces/$HF_USER/$HF_REPO HEAD:main
