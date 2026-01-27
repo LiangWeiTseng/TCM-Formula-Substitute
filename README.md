@@ -1,6 +1,10 @@
-為了解決科中缺藥使用GPT和Python協助寫出來的小程式。來源是衛福部中藥許可證的順天堂公司科中，若有建議或想複製代碼自行修改運用的都歡迎，也可以自己新增dictionary來擴充方劑資料庫。
+### 🚀 中藥缺藥小幫手 v2.0.0
+為了解決科學中藥缺藥問題，利用 GPT 與 Python 開發的搜尋工具。資料來源為**衛福部中藥許可證**之科中組成。歡迎建議、修改代碼或自行擴充方劑資料庫。
 
-致謝：曾建霖的python教學、呂易芩的討論與idea
+致謝：林品銓醫師的建議、曾建霖醫師的python教學、呂易芩的討論與idea
+
+## 🔗 線上使用介面
+[**點我開啟：Hugging Face 線上搜尋介面**](https://huggingface.co/spaces/adetectora/formula-altsearch)
 
 ## 安裝
 
@@ -83,6 +87,9 @@ python -m venv .venv
 
 # 進入此虛擬環境 (Windows)
 .venv\Scripts\activate
+
+# 升級 pip 本身
+python -m pip install --upgrade pip
 
 # 進入此虛擬環境 (Linux)
 source .venv/bin/activate
