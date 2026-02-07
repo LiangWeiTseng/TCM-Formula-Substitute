@@ -22,7 +22,7 @@ jobs:
     steps:
       - name: Define variables
         run: |
-          echo "PY_VER=3.14" >> $GITHUB_ENV
+          echo "PY_VER=3.12" >> $GITHUB_ENV
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -59,7 +59,7 @@ jobs:
           # ref: https://huggingface.co/docs/hub/spaces-config-reference
           cat >README.md <<'EOF'
           ---
-          title: 缺藥救星
+          title: 中藥缺藥小幫手 v2.0.0
           emoji: 🌿
           colorFrom: green
           colorTo: blue
