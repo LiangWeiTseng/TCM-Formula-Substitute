@@ -22,7 +22,7 @@ jobs:
     steps:
       - name: Define variables
         run: |
-          echo "PY_VER=3.14" >> $GITHUB_ENV
+          echo "PY_VER=3.12" >> $GITHUB_ENV
 
       - name: Set up Python
         uses: actions/setup-python@v6

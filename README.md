@@ -8,7 +8,7 @@
 
 ## 安裝
 
-1. 安裝 [Python >= 3.9](https://www.python.org/downloads/)
+1. 安裝 [Python = 3.12](https://www.python.org/downloads/)
 
 2. 下載套件原始檔後於該目錄下執行：
    ```
