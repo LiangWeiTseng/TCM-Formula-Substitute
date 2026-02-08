@@ -59,7 +59,7 @@ jobs:
           # ref: https://huggingface.co/docs/hub/spaces-config-reference
           cat >README.md <<'EOF'
           ---
-          title: 缺藥救星
+          title: 中藥缺藥小幫手
           emoji: 🌿
           colorFrom: green
           colorTo: blue
